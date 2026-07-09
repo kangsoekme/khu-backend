@@ -1,0 +1,7 @@
+node_modules
+.env
+generated
+postman
+prisma/migrations
+docker-compose.yml
+prisma/seed.js
