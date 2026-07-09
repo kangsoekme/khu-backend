@@ -1,0 +1,261 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  SUPER_ADMIN
+  DIREKTUR
+  MUHASSIN
+  MUHAFFIDZ
+}
+
+enum Jenis_Kelamin {
+  LAKI_LAKI
+  PEREMPUAN
+}
+
+enum Kategori {
+  TAHSIN
+  TAHFIDZ
+}
+
+enum Predikat {
+  MUMTAZ
+  JAYYID_JIDDAN
+  JAYYID
+  MAQBUL
+  DHAIF
+}
+
+enum Tahapan {
+  JILID_DASAR
+  TAJWID
+  GHARIB
+  ALQURAN
+}
+
+enum STATUS_KELULUSAN {
+  LULUS
+  TIDAK_LULUS
+}
+
+enum STATUS_KELANJUTAN {
+  LANJUT
+  MENGULANG
+}
+
+model Surah {
+  no_surah             Int                @id
+  nama_surah           String
+  jumlah_ayat          Int
+  setoranHafalans      Setoran_Hafalan[]
+  setoranMurajaahs     Setoran_Murajaah[]
+  setoranTahsins       Setoran_Tahsin[]   @relation("HafalanSurah")
+  setoranHafalanTahsin Setoran_Tahsin[]   @relation("LaporanBacaan")
+
+  @@map("surah")
+}
+
+model Bab_Jilid {
+  nomor    Int    @id
+  jilid    Int
+  nama_bab String
+
+  @@map("bab_jilid")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  nama          String
+  email         String    @unique
+  no_telp       String
+  password      String
+  role          Role      @default(MUHASSIN)
+  profile_photo String?
+  halaqoh       Halaqoh[]
+  updatedAt     DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  token         String?
+
+  @@map("users")
+}
+
+model Siswa {
+  nis           String        @id
+  nama          String
+  jenis_kelamin Jenis_Kelamin @default(LAKI_LAKI)
+  tanggal_lahir DateTime      @db.Date
+  alamat        String
+  nama_wali     String
+  no_telp       String
+  kelas         String
+  profile_photo String?
+  updatedAt     DateTime      @default(now())
+  createdAt     DateTime      @default(now())
+
+  halaqoh_tahsin_id  String?
+  halaqoh_tahfidz_id String?
+
+  halaqoh_tahsin  Halaqoh? @relation("SiswaTahsin", fields: [halaqoh_tahsin_id], references: [id])
+  halaqoh_tahfidz Halaqoh? @relation("SiswaTahfidz", fields: [halaqoh_tahfidz_id], references: [id])
+
+  tahapan_tahsin Tahapan @default(JILID_DASAR)
+
+  setoranHafalan Setoran_Hafalan[]  @relation("LaporanHafalanBaru")
+  setoranTahsin  Setoran_Tahsin[]   @relation("LaporanTahsinBaru")
+  murajaah       Setoran_Murajaah[]
+  ujianKenaikan  Ujian_Kenaikan[]
+  ujianPretest   Ujian_Pretest[]
+
+  @@map("siswa")
+}
+
+model Halaqoh {
+  id       String   @id @default(uuid())
+  nama     String
+  kategori Kategori @default(TAHSIN)
+
+  userId String
+
+  user User @relation(fields: [userId], references: [id])
+
+  siswaTahsin     Siswa[]            @relation("SiswaTahsin")
+  siswaTahfidz    Siswa[]            @relation("SiswaTahfidz")
+  setoranHafalan  Setoran_Hafalan[]
+  setoranMurajaah Setoran_Murajaah[]
+  setoranTahsin   Setoran_Tahsin[]
+  ujianKenaikan   Ujian_Kenaikan[]
+
+  @@map("halaqoh")
+}
+
+model Setoran_Hafalan {
+  id                String            @id @default(uuid())
+  timestamp         DateTime          @default(now())
+  nis_siswa         String
+  halaqohId         String
+  no_surah          Int
+  ayat_awal         Int
+  ayat_akhir        Int
+  durasi_baca       Int
+  toggle_tarjamah   Boolean
+  jumlah_salah      Int
+  murajaah          Int
+  kelancaran        Int
+  tajwid            Int
+  rata_rata         Int
+  predikat          Predikat
+  status_kelanjutan STATUS_KELANJUTAN
+
+  siswa   Siswa   @relation("LaporanHafalanBaru", fields: [nis_siswa], references: [nis])
+  halaqoh Halaqoh @relation(fields: [halaqohId], references: [id])
+  surah   Surah   @relation(fields: [no_surah], references: [no_surah])
+
+  @@map("setoran_hafalan")
+}
+
+model Setoran_Murajaah {
+  id           String   @id @default(uuid())
+  timestamp    DateTime @default(now())
+  nis_siswa    String
+  halaqohId    String
+  no_surah     Int
+  ayat_awal    Int
+  ayat_akhir   Int
+  jumlah_salah Int
+  murajaah     Int
+  kelancaran   Int
+  tajwid       Int
+  rata_rata    Int
+  predikat     Predikat
+
+  siswa   Siswa   @relation(fields: [nis_siswa], references: [nis])
+  halaqoh Halaqoh @relation(fields: [halaqohId], references: [id])
+  surah   Surah   @relation(fields: [no_surah], references: [no_surah])
+
+  @@map("setoran_murajaah")
+}
+
+model Setoran_Tahsin {
+  id                 String   @id @default(uuid())
+  timestamp          DateTime @default(now())
+  nis_siswa          String
+  id_kelompok        String
+  hafalan_surah      Int?
+  hafalan_ayat_awal  Int?
+  hafalan_ayat_akhir Int?
+
+  tahapan Tahapan @default(JILID_DASAR)
+
+  // bentuk A
+  jilid Int?
+  bab   Int? // bisa ke gharib keatas
+
+  no_surah   Int?
+  ayat_awal  Int?
+  ayat_akhir Int?
+  // gharib / tajwid
+
+  materi String?
+
+  nilai             String
+  keterangan        String
+  status_kelanjutan STATUS_KELANJUTAN
+
+  siswa        Siswa   @relation("LaporanTahsinBaru", fields: [nis_siswa], references: [nis])
+  halaqoh      Halaqoh @relation(fields: [id_kelompok], references: [id])
+  hafalahSurah Surah?  @relation("HafalanSurah", fields: [hafalan_surah], references: [no_surah])
+  surah        Surah?  @relation("LaporanBacaan", fields: [no_surah], references: [no_surah])
+
+  @@map("setoran_tahsin")
+}
+
+// ujian kenaikan tingkat
+
+model Ujian_Kenaikan {
+  id          String @id @default(uuid())
+  nis_siswa   String
+  id_kelompok String
+
+  tahapan Tahapan @default(JILID_DASAR)
+
+  // bentuk A
+  jilid Int?
+  bab   Int? // bisa ke gharib keatas
+
+  no_surah   Int?
+  ayat_awal  Int?
+  ayat_akhir Int?
+  // gharib / tajwid
+
+  nilai            String
+  keterangan       String
+  status_kelulusan STATUS_KELULUSAN
+
+  siswa   Siswa   @relation(fields: [nis_siswa], references: [nis])
+  halaqoh Halaqoh @relation(fields: [id_kelompok], references: [id])
+
+  @@map("ujian_kenaikan")
+}
+
+model Ujian_Pretest {
+  id        String @id @default(uuid())
+  nis_siswa String
+
+  nilai      String
+  keterangan String
+
+  siswa Siswa @relation(fields: [nis_siswa], references: [nis])
+
+  @@map("ujian_pretest")
+}
