@@ -29,6 +29,21 @@ const addUser = async (request) => {
 
   user.password = await bcrypt.hash(user.password, 10);
 
+  if (user.role === "SUPER_ADMIN" || user.role === "DIREKTUR") {
+    const countRole = await prismaClient.user.count({
+      where: {
+        role: user.role,
+      },
+    });
+
+    if (countRole > 0) {
+      throw new ResponseError(
+        400,
+        `Hanya boleh ada 1 akun untuk role ${user.role}`,
+      );
+    }
+  }
+
   //  tambah user
   return prismaClient.user.create({
     data: user,
@@ -163,7 +178,7 @@ const login = async (request) => {
     where: {
       email: user.email,
     },
-    select: { token: true },
+    select: { token: true, role: true, nama: true },
   });
 };
 
@@ -200,6 +215,47 @@ const deleteUser = async (userId) => {
 
   if (!user) {
     throw new ResponseError(404, "User not found");
+  }
+
+  const hasHalaqoh = await prismaClient.halaqoh.findMany({
+    where: {
+      userId: userId,
+    },
+    select: { id: true },
+  });
+
+  const halaqohId = hasHalaqoh.map((h) => h.id);
+
+  if (halaqohId.length > 0) {
+    await prismaClient.setoran_Tahsin.deleteMany({
+      where: {
+        id_kelompok: { in: halaqohId },
+      },
+    });
+
+    await prismaClient.setoran_Hafalan.deleteMany({
+      where: {
+        halaqohId: { in: halaqohId },
+      },
+    });
+
+    await prismaClient.setoran_Murajaah.deleteMany({
+      where: {
+        halaqohId: { in: halaqohId },
+      },
+    });
+
+    await prismaClient.ujian_Kenaikan.deleteMany({
+      where: {
+        id_kelompok: { in: halaqohId },
+      },
+    });
+
+    await prismaClient.halaqoh.deleteMany({
+      where: {
+        userId: userId,
+      },
+    });
   }
 
   return prismaClient.user.delete({

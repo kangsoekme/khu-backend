@@ -17,7 +17,7 @@ const addHalaqoh = async (request) => {
     throw new ResponseError(404, "Data user tidak ditemukan");
   }
 
-  if (guru.role !== "MUHASSIN" && guru.role !== "MUHAFFIDZ") {
+  if (guru.role !== "GURU") {
     throw new ResponseError(400, "User bukan Muhassin / Muhaffidz");
   }
 
@@ -52,7 +52,12 @@ const addHalaqoh = async (request) => {
               select: {
                 nis: true,
                 nama: true,
-                kelas: true,
+
+                riwayatKelas: {
+                  where: { status: "AKTIF" },
+                  select: { nama_kelas: true },
+                },
+
                 alamat: true,
                 no_telp: true,
               },
@@ -64,7 +69,12 @@ const addHalaqoh = async (request) => {
               select: {
                 nis: true,
                 nama: true,
-                kelas: true,
+
+                riwayatKelas: {
+                  where: { status: "AKTIF" },
+                  select: { nama_kelas: true },
+                },
+
                 alamat: true,
                 no_telp: true,
               },
@@ -84,7 +94,12 @@ const getAllHalaqoh = async () => {
         select: {
           nis: true,
           nama: true,
-          kelas: true,
+
+          riwayatKelas: {
+            where: { status: "AKTIF" },
+            select: { nama_kelas: true },
+          },
+
           alamat: true,
           no_telp: true,
         },
@@ -93,7 +108,12 @@ const getAllHalaqoh = async () => {
         select: {
           nis: true,
           nama: true,
-          kelas: true,
+
+          riwayatKelas: {
+            where: { status: "AKTIF" },
+            select: { nama_kelas: true },
+          },
+
           alamat: true,
           no_telp: true,
         },
@@ -113,7 +133,12 @@ const getHalaqoh = async (halaqohId) => {
         select: {
           nis: true,
           nama: true,
-          kelas: true,
+
+          riwayatKelas: {
+            where: { status: "AKTIF" },
+            select: { nama_kelas: true },
+          },
+
           alamat: true,
           no_telp: true,
         },
@@ -122,7 +147,12 @@ const getHalaqoh = async (halaqohId) => {
         select: {
           nis: true,
           nama: true,
-          kelas: true,
+
+          riwayatKelas: {
+            where: { status: "AKTIF" },
+            select: { nama_kelas: true },
+          },
+
           alamat: true,
           no_telp: true,
         },
@@ -158,7 +188,7 @@ const editHalaqoh = async (halaqohId, request) => {
     throw new ResponseError(404, "Data user tidak ditemukan");
   }
 
-  if (guru.role !== "MUHASSIN" && guru.role !== "MUHAFFIDZ") {
+  if (guru.role !== "GURU") {
     throw new ResponseError(400, "User bukan Muhassin / Muhaffidz");
   }
 
@@ -168,17 +198,18 @@ const editHalaqoh = async (halaqohId, request) => {
       nama: halaqoh.nama,
       kategori: halaqoh.kategori,
       user: { connect: { id: halaqoh.userId } },
-      ...(halaqoh.kategori === "TAHSIN"
-        ? {
-            siswaTahsin: {
-              connect: halaqoh.nis_siswa.map((nis) => ({ nis: nis })),
-            },
-          }
-        : {
-            siswaTahfidz: {
-              connect: halaqoh.nis_siswa.map((nis) => ({ nis: nis })),
-            },
-          }),
+      siswaTahsin: {
+        set:
+          halaqoh.kategori === "TAHSIN"
+            ? halaqoh.nis_siswa.map((nis) => ({ nis: nis }))
+            : [],
+      },
+      siswaTahfidz: {
+        set:
+          halaqoh.kategori === "TAHFIDZ"
+            ? halaqoh.nis_siswa.map((nis) => ({ nis: nis }))
+            : [],
+      },
     },
     include: {
       user: {
@@ -188,7 +219,12 @@ const editHalaqoh = async (halaqohId, request) => {
         select: {
           nis: true,
           nama: true,
-          kelas: true,
+
+          riwayatKelas: {
+            where: { status: "AKTIF" },
+            select: { nama_kelas: true },
+          },
+
           alamat: true,
           no_telp: true,
         },
@@ -197,7 +233,12 @@ const editHalaqoh = async (halaqohId, request) => {
         select: {
           nis: true,
           nama: true,
-          kelas: true,
+
+          riwayatKelas: {
+            where: { status: "AKTIF" },
+            select: { nama_kelas: true },
+          },
+
           alamat: true,
           no_telp: true,
         },
@@ -216,6 +257,22 @@ const deleteHalaqoh = async (halaqohId) => {
   if (!halaqoh) {
     throw new ResponseError(404, "Halaqoh not found");
   }
+
+  await prismaClient.setoran_Hafalan.deleteMany({
+    where: { halaqohId: halaqohId },
+  });
+
+  await prismaClient.setoran_Tahsin.deleteMany({
+    where: { id_kelompok: halaqohId },
+  });
+
+  await prismaClient.setoran_Murajaah.deleteMany({
+    where: { halaqohId: halaqohId },
+  });
+
+  await prismaClient.ujian_Kenaikan.deleteMany({
+    where: { id_kelompok: halaqohId },
+  });
 
   return prismaClient.halaqoh.delete({
     where: {

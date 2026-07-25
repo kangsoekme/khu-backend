@@ -15,8 +15,7 @@ datasource db {
 enum Role {
   SUPER_ADMIN
   DIREKTUR
-  MUHASSIN
-  MUHAFFIDZ
+  GURU
 }
 
 enum Jenis_Kelamin {
@@ -38,7 +37,12 @@ enum Predikat {
 }
 
 enum Tahapan {
-  JILID_DASAR
+  JILID_1
+  JILID_2
+  JILID_3
+  JILID_4
+  JILID_5
+  JILID_6
   TAJWID
   GHARIB
   ALQURAN
@@ -52,6 +56,12 @@ enum STATUS_KELULUSAN {
 enum STATUS_KELANJUTAN {
   LANJUT
   MENGULANG
+}
+
+enum STATUS_PENGAJUAN {
+  MENUNGGU
+  DISELESAIKAN
+  DITOLAK
 }
 
 model Surah {
@@ -75,17 +85,18 @@ model Bab_Jilid {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  nama          String
-  email         String    @unique
-  no_telp       String
-  password      String
-  role          Role      @default(MUHASSIN)
-  profile_photo String?
-  halaqoh       Halaqoh[]
-  updatedAt     DateTime  @default(now())
-  createdAt     DateTime  @default(now())
-  token         String?
+  id             String            @id @default(uuid())
+  nama           String
+  email          String            @unique
+  no_telp        String
+  password       String
+  role           Role              @default(GURU)
+  profile_photo  String?
+  halaqoh        Halaqoh[]
+  updatedAt      DateTime          @default(now())
+  createdAt      DateTime          @default(now())
+  token          String?
+  pengajuanUjian Pengajuan_Ujian[]
 
   @@map("users")
 }
@@ -98,7 +109,6 @@ model Siswa {
   alamat        String
   nama_wali     String
   no_telp       String
-  kelas         String
   profile_photo String?
   updatedAt     DateTime      @default(now())
   createdAt     DateTime      @default(now())
@@ -109,7 +119,7 @@ model Siswa {
   halaqoh_tahsin  Halaqoh? @relation("SiswaTahsin", fields: [halaqoh_tahsin_id], references: [id])
   halaqoh_tahfidz Halaqoh? @relation("SiswaTahfidz", fields: [halaqoh_tahfidz_id], references: [id])
 
-  tahapan_tahsin Tahapan @default(JILID_DASAR)
+  tahapan_tahsin Tahapan?
 
   setoranHafalan Setoran_Hafalan[]  @relation("LaporanHafalanBaru")
   setoranTahsin  Setoran_Tahsin[]   @relation("LaporanTahsinBaru")
@@ -117,7 +127,34 @@ model Siswa {
   ujianKenaikan  Ujian_Kenaikan[]
   ujianPretest   Ujian_Pretest[]
 
+  riwayatKelas   Riwayat_Kelas[]
+  pengajuanUjian Pengajuan_Ujian[]
+
   @@map("siswa")
+}
+
+model Tahun_Akademik {
+  id           String          @id @default(uuid())
+  nama_tahun   String
+  is_active    Boolean         @default(false)
+  riwayatKelas Riwayat_Kelas[]
+
+  @@map("tahun_akademik")
+}
+
+model Riwayat_Kelas {
+  id String @id @default(uuid())
+
+  nis_siswa String
+
+  tahun_id   String
+  nama_kelas String
+  status     String
+
+  siswa          Siswa          @relation(fields: [nis_siswa], references: [nis])
+  tahun_akademik Tahun_Akademik @relation(fields: [tahun_id], references: [id])
+
+  @@map("riwayat_kelas")
 }
 
 model Halaqoh {
@@ -140,19 +177,20 @@ model Halaqoh {
 }
 
 model Setoran_Hafalan {
-  id                String            @id @default(uuid())
-  timestamp         DateTime          @default(now())
-  nis_siswa         String
-  halaqohId         String
-  no_surah          Int
-  ayat_awal         Int
-  ayat_akhir        Int
-  durasi_baca       Int
-  toggle_tarjamah   Boolean
-  jumlah_salah      Int
-  murajaah          Int
-  kelancaran        Int
-  tajwid            Int
+  id                 String   @id @default(uuid())
+  timestamp          DateTime @default(now())
+  nis_siswa          String
+  halaqohId          String
+  no_surah           Int
+  ayat_awal          Int
+  ayat_akhir         Int
+  jumlah_pengulangan Int
+  toggle_tarjamah    Boolean
+  jumlah_salah       Int
+
+  nilai_bacaan  Int
+  nilai_hafalan Int
+
   rata_rata         Int
   predikat          Predikat
   status_kelanjutan STATUS_KELANJUTAN
@@ -173,11 +211,12 @@ model Setoran_Murajaah {
   ayat_awal    Int
   ayat_akhir   Int
   jumlah_salah Int
-  murajaah     Int
-  kelancaran   Int
-  tajwid       Int
-  rata_rata    Int
-  predikat     Predikat
+
+  nilai_bacaan  Int
+  nilai_hafalan Int
+
+  rata_rata Int
+  predikat  Predikat
 
   siswa   Siswa   @relation(fields: [nis_siswa], references: [nis])
   halaqoh Halaqoh @relation(fields: [halaqohId], references: [id])
@@ -195,7 +234,7 @@ model Setoran_Tahsin {
   hafalan_ayat_awal  Int?
   hafalan_ayat_akhir Int?
 
-  tahapan Tahapan @default(JILID_DASAR)
+  tahapan Tahapan
 
   // bentuk A
   jilid Int?
@@ -227,16 +266,7 @@ model Ujian_Kenaikan {
   nis_siswa   String
   id_kelompok String
 
-  tahapan Tahapan @default(JILID_DASAR)
-
-  // bentuk A
-  jilid Int?
-  bab   Int? // bisa ke gharib keatas
-
-  no_surah   Int?
-  ayat_awal  Int?
-  ayat_akhir Int?
-  // gharib / tajwid
+  tahapan Tahapan
 
   nilai            String
   keterangan       String
@@ -255,7 +285,23 @@ model Ujian_Pretest {
   nilai      String
   keterangan String
 
+  tahapan Tahapan
+
   siswa Siswa @relation(fields: [nis_siswa], references: [nis])
 
   @@map("ujian_pretest")
+}
+
+model Pengajuan_Ujian {
+  id        String   @id @default(uuid())
+  timestamp DateTime @default(now())
+  nis_siswa String
+  id_guru   String
+  kategori  Kategori
+  tahapan   Tahapan
+
+  siswa Siswa @relation(fields: [nis_siswa], references: [nis])
+  guru  User  @relation(fields: [id_guru], references: [id])
+
+  @@map("pengajuan_ujian")
 }
