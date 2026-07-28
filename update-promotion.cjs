@@ -1,50 +1,8 @@
-import { prismaClient } from "../application/database.js";
-import { ResponseError } from "../error/response-error.js";
-import { validate } from "../validation/validation.js";
-import {
-  createTahunAkademikValidation,
-  transisiSemesterValidation,
-} from "../validation/tahun-akademik-validation.js";
+const fs = require('fs');
+const path = 'C:/Users/PC_24/Documents/sj/project/BACKEND/src/services/tahun-akademik-service.js';
+let content = fs.readFileSync(path, 'utf8');
 
-const getAllTahunAkademik = async () => {
-  return await prismaClient.tahun_Akademik.findMany({
-    orderBy: { nama_tahun: "desc" },
-  });
-};
-
-const getActiveTahunAkademik = async () => {
-  const active = await prismaClient.tahun_Akademik.findFirst({
-    where: { is_active: true },
-  });
-  if (!active) {
-    throw new ResponseError(404, "Tidak ada tahun akademik yang aktif");
-  }
-  return active;
-};
-
-const createTahunAkademik = async (request) => {
-  const data = validate(createTahunAkademikValidation, request);
-
-  const existing = await prismaClient.tahun_Akademik.findFirst({
-    where: { nama_tahun: data.nama_tahun },
-  });
-
-  if (existing) {
-    throw new ResponseError(
-      400,
-      "Tahun akademik dengan nama tersebut sudah ada",
-    );
-  }
-
-  return await prismaClient.tahun_Akademik.create({
-    data: {
-      nama_tahun: data.nama_tahun,
-      is_active: data.is_active || false,
-    },
-  });
-};
-
-const incrementClass = (className) => {
+const replacement = `const incrementClass = (className) => {
   const parts = className.split('-');
   if (parts.length !== 2) return className; 
   
@@ -59,7 +17,7 @@ const incrementClass = (className) => {
   if (!nextGrade) return className;
   if (nextGrade === "LULUS") return "LULUS";
   
-  return `${nextGrade}-${section}`;
+  return \`\${nextGrade}-\${section}\`;
 };
 
 const transisiSemester = async (request) => {
@@ -146,11 +104,11 @@ const transisiSemester = async (request) => {
       is_kenaikan_kelas: !!isNewAcademicYear
     };
   });
-};
+};`;
 
-export default {
-  getAllTahunAkademik,
-  getActiveTahunAkademik,
-  createTahunAkademik,
-  transisiSemester,
-};
+const regex = /const transisiSemester = async \(request\) => {[\s\S]*?message: "Transisi semester berhasil dilakukan",\s*tahun_aktif_baru: updatedTahun.nama_tahun,\s*total_siswa_ditransisikan: riwayatAktif.length,\s*};\s*}\);\s*};/g;
+
+content = content.replace(regex, replacement);
+
+fs.writeFileSync(path, content, 'utf8');
+console.log('Update successful');
