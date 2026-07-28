@@ -18,6 +18,13 @@ const addUjianKenaikanTahsin = async (request) => {
   if (!siswa) throw new ResponseError(404, "Siswa tidak ditemukkan");
 
   return await prismaClient.$transaction(async (prisma) => {
+    const pengajuan = await prisma.pengajuan_Ujian.findFirst({
+      where: { nis_siswa: nis_siswa, kategori: "TAHSIN" },
+    });
+
+    const targetTahapan =
+      tahapan_baru || pengajuan?.tahapan || siswa.tahapan_tahsin;
+
     await prisma.pengajuan_Ujian.deleteMany({
       where: { nis_siswa: nis_siswa, kategori: "TAHSIN" },
     });
@@ -26,7 +33,7 @@ const addUjianKenaikanTahsin = async (request) => {
       data: {
         nis_siswa,
         id_kelompok,
-        tahapan: tahapan_baru,
+        tahapan: targetTahapan,
         nilai,
         keterangan,
         status_kelulusan,
@@ -36,7 +43,7 @@ const addUjianKenaikanTahsin = async (request) => {
     if (status_kelulusan === "LULUS") {
       await prisma.siswa.update({
         where: { nis: nis_siswa },
-        data: { tahapan_tahsin: tahapan_baru },
+        data: { tahapan_tahsin: targetTahapan },
       });
     }
 

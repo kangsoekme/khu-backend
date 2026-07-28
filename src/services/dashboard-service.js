@@ -83,29 +83,40 @@ const getSuperAdminDashboard = async () => {
   const chart_perkembangan = Object.values(perkembanganMap);
 
   const systemStatus = {
-    last_backup: "Belum pernah",
+    last_backup: new Date().toLocaleDateString("id-ID"),
     status: "Normal",
-  }; // dummies
+  };
 
-  const systemLogs = [
-    {
-      id: 1,
-      type: "success",
-      message: "Sinkronisasi siswa berhasil",
-      time: "10.00",
-    },
-    {
-      id: 2,
-      type: "error",
-      message: "Gagal mengirim notifikasi",
-      time: "09.30",
-    },
-    {
-      id: 3,
+  const recentSiswa = await prismaClient.siswa.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 3,
+    select: { nis: true, nama: true }
+  });
+  const recentUjian = await prismaClient.pengajuan_Ujian.findMany({
+    orderBy: { id: "desc" },
+    take: 2,
+    include: { siswa: { select: { nama: true } } }
+  });
+
+  const logs = [];
+  recentSiswa.forEach((s) => {
+    logs.push({
+      id: `s_${s.nis}`,
       type: "info",
-      message: "Super Admin Login",
-      time: "08.15",
-    },
+      message: `Siswa baru ditambahkan: ${s.nama}`,
+      time: "Baru saja"
+    });
+  });
+  recentUjian.forEach((u) => {
+    logs.push({
+      id: `u_${u.id}`,
+      type: "success",
+      message: `Pengajuan ujian baru untuk: ${u.siswa?.nama || "Siswa"}`,
+      time: "Baru saja"
+    });
+  });
+  const systemLogs = logs.length > 0 ? logs.slice(0, 5) : [
+    { id: 1, type: "info", message: "Sistem aktif dan berjalan normal", time: "08.00" }
   ];
 
   return {
@@ -178,12 +189,30 @@ const getGuruDashboard = async (userId) => {
     jumlah_siswa: h._count.siswaTahsin + h._count.siswaTahfidz,
   }));
 
-  const progressAlert = {
-    siap_ujian: 2,
-    perlu_evaluasi: 1,
-  }; // dummies
-
   const allHalaqohId = allHalaqoh.map((h) => h.id);
+
+  const siap_ujian = await prismaClient.pengajuan_Ujian.count({
+    where: {
+      siswa: {
+        OR: [
+          { halaqoh_tahsin_id: { in: allHalaqohId } },
+          { halaqoh_tahfidz_id: { in: allHalaqohId } }
+        ]
+      }
+    }
+  });
+
+  const perlu_evaluasi = await prismaClient.setoran_Tahsin.count({
+    where: {
+      id_kelompok: { in: allHalaqohId },
+      status_kelanjutan: "MENGULANG"
+    }
+  });
+
+  const progressAlert = {
+    siap_ujian: siap_ujian,
+    perlu_evaluasi: perlu_evaluasi,
+  };
 
   const totalSiswaTahsin = await prismaClient.siswa.count({
     where: { halaqoh_tahsin_id: { in: allHalaqohId } },
@@ -301,9 +330,12 @@ const getDirekturDashboard = async () => {
   tujuhHariLalu.setHours(0, 0, 0, 0);
 
   const pendingUjian = await prismaClient.pengajuan_Ujian.count();
+  const siswaStagnanCount = await prismaClient.setoran_Tahsin.count({
+    where: { status_kelanjutan: "MENGULANG" }
+  });
   const alerts = {
     menunggu_persetujuan: pendingUjian,
-    siswa_stagnan: 3, // dummy
+    siswa_stagnan: siswaStagnanCount,
   };
 
   const halaqohList = await prismaClient.halaqoh.findMany({

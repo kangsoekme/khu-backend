@@ -31,32 +31,40 @@ const addTahsin = async (request) => {
     ? "LANJUT"
     : "MENGULANG";
 
-  return prismaClient.setoran_Tahsin.create({
-    data: {
-      nis_siswa: tahsin.nis_siswa,
-      id_kelompok: tahsin.halaqohId,
-      hafalan_surah: tahsin.hafalan_surah,
-      hafalan_ayat_awal: tahsin.hafalan_ayat_awal,
-      hafalan_ayat_akhir: tahsin.hafalan_ayat_akhir,
+  const [setoran] = await prismaClient.$transaction([
+    prismaClient.setoran_Tahsin.create({
+      data: {
+        nis_siswa: tahsin.nis_siswa,
+        id_kelompok: tahsin.halaqohId,
+        hafalan_surah: tahsin.hafalan_surah,
+        hafalan_ayat_awal: tahsin.hafalan_ayat_awal,
+        hafalan_ayat_akhir: tahsin.hafalan_ayat_akhir,
 
-      tahapan: tahsin.tahapan,
-      jilid: tahsin.jilid,
-      bab: tahsin.bab,
+        tahapan: tahsin.tahapan,
+        jilid: tahsin.jilid,
+        bab: tahsin.bab,
 
-      no_surah: tahsin.no_surah,
-      ayat_awal: tahsin.ayat_awal,
-      ayat_akhir: tahsin.ayat_akhir,
-      materi: tahsin.materi,
+        no_surah: tahsin.no_surah,
+        ayat_awal: tahsin.ayat_awal,
+        ayat_akhir: tahsin.ayat_akhir,
+        materi: tahsin.materi,
 
-      nilai: tahsin.nilai,
-      keterangan: tahsin.keterangan,
-      status_kelanjutan: statusKelanjutan,
-    },
-    include: {
-      siswa: { select: { nama: true, nis: true } },
-      halaqoh: { select: { nama: true } },
-    },
-  });
+        nilai: tahsin.nilai,
+        keterangan: tahsin.keterangan,
+        status_kelanjutan: statusKelanjutan,
+      },
+      include: {
+        siswa: { select: { nama: true, nis: true } },
+        halaqoh: { select: { nama: true } },
+      },
+    }),
+    prismaClient.siswa.update({
+      where: { nis: tahsin.nis_siswa },
+      data: { tahapan_tahsin: tahsin.tahapan },
+    }),
+  ]);
+
+  return setoran;
 };
 
 const addPretest = async (request) => {
@@ -73,7 +81,6 @@ const addPretest = async (request) => {
     prismaClient.ujian_Pretest.create({
       data: {
         nis_siswa: pretest.nis_siswa,
-        nilai: pretest.nilai,
         keterangan: pretest.keterangan,
         tahapan: pretest.tahapan,
       },
@@ -164,6 +171,7 @@ const getRiwayatTahsin = async (nis) => {
   const historyMapping = siswa.setoranTahsin.map((setoran) => ({
     id: setoran.id,
     timestamp: setoran.timestamp,
+    tahapan: setoran.tahapan,
     hafalan_surah: {
       surah: setoran.hafalahSurah ? setoran.hafalahSurah.nama_surah : null,
       ayat_awal: setoran.hafalan_ayat_awal,
@@ -173,6 +181,12 @@ const getRiwayatTahsin = async (nis) => {
       jilid_surah: setoran.surah ? setoran.surah.nama_surah : setoran.jilid,
       ayat: setoran.ayat_akhir || setoran.bab,
       materi: setoran.materi,
+      jilid: setoran.jilid,
+      bab: setoran.bab,
+      surah: setoran.surah ? setoran.surah.nama_surah : null,
+      ayat_awal: setoran.ayat_awal,
+      ayat_akhir: setoran.ayat_akhir,
+      no_surah: setoran.no_surah,
     },
 
     nilai_tahsin: setoran.nilai,
@@ -192,4 +206,31 @@ const getRiwayatTahsin = async (nis) => {
   };
 };
 
-export default { addPretest, addTahsin, getRiwayatTahsin };
+const editTahsin = async (id, request) => {
+  const setoran = await prismaClient.setoran_Tahsin.findUnique({
+    where: { id },
+  });
+  if (!setoran) throw new ResponseError(404, "Data setoran tidak ditemukan");
+
+  return await prismaClient.setoran_Tahsin.update({
+    where: { id },
+    data: request,
+  });
+};
+
+const deleteTahsin = async (id) => {
+  const setoran = await prismaClient.setoran_Tahsin.findUnique({
+    where: { id },
+  });
+  if (!setoran) throw new ResponseError(404, "Data setoran tidak ditemukan");
+
+  return await prismaClient.setoran_Tahsin.delete({ where: { id } });
+};
+
+export default {
+  addPretest,
+  addTahsin,
+  getRiwayatTahsin,
+  editTahsin,
+  deleteTahsin,
+};

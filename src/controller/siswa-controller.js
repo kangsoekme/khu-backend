@@ -1,4 +1,3 @@
-import { sendToQueue } from "../application/rabbitmq.js";
 import siswaService from "../services/siswa-service.js";
 
 const addSiswa = async (req, res, next) => {
@@ -32,6 +31,14 @@ const getAllSiswa = async (req, res, next) => {
 const getSiswa = async (req, res, next) => {
   try {
     const nis = req.params.nis;
+    
+    if (req.user.role === "WALI" && req.user.nis !== nis) {
+      return res.status(403).json({
+        status: "error",
+        message: "Akses ditolak, Anda hanya dapat melihat profil anak Anda sendiri.",
+      });
+    }
+    
     const result = await siswaService.getSiswa(nis);
     res.status(200).json({ status: "success", data: result });
   } catch (error) {
@@ -58,16 +65,12 @@ const importSiswaExcel = async (req, res, next) => {
       return res.status(400).json({ message: "File excel not found" });
     }
 
-    const messagePayload = {
-      filePath: req.file.path,
-      uploadedBy: req.user.id,
-    };
-
-    await sendToQueue("import_siswa_queue", messagePayload);
+    const result = await siswaService.importSiswaExcelSync(req.file.path);
 
     res.status(200).json({
       status: "success",
-      message: "File has been successfully uploaded",
+      message: `Berhasil mengimpor ${result.total_imported} data siswa secara sinkronus`,
+      data: result,
     });
   } catch (error) {
     next(error);

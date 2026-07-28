@@ -114,17 +114,19 @@ const getLaporanGuruTahsin = async (userId) => {
     where: { kategori: "TAHSIN", userId: userId },
     include: {
       siswaTahsin: {
-        nis: true,
-        nama: true,
-        riwayatKelas: { select: { nama_kelas: true } },
-        setoranTahsin: {
-          orderBy: { timestamp: "desc" },
-          select: {
-            nilai: true,
-            keterangan: true,
-            timestamp: true,
-            tahapan: true,
-            jilid: true,
+        select: {
+          nis: true,
+          nama: true,
+          riwayatKelas: { select: { nama_kelas: true } },
+          setoranTahsin: {
+            orderBy: { timestamp: "desc" },
+            select: {
+              nilai: true,
+              keterangan: true,
+              timestamp: true,
+              tahapan: true,
+              jilid: true,
+            },
           },
         },
       },

@@ -17,6 +17,7 @@ import ujianController from "../controller/ujian-controller.js";
 import pengajuanUjianTahsinController from "../controller/pengajuan-ujian-tahsin-controller.js";
 import backupController from "../controller/backup-controller.js";
 import exportController from "../controller/export-controller.js";
+import tahunAkademikController from "../controller/tahun-akademik-controller.js";
 
 // manajemen user
 
@@ -80,6 +81,7 @@ userRouter.get(
 userRouter.get(
   "/api/student/:nis",
   authMiddleware.verifyToken,
+  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR", "GURU", "WALI"]),
   siswaController.getSiswa,
 );
 
@@ -103,6 +105,20 @@ userRouter.post(
   authMiddleware.verifyToken,
   authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR"]),
   halaqohController.addHalaqoh,
+);
+
+userRouter.post(
+  "/api/halaqoh/auto-generate",
+  authMiddleware.verifyToken,
+  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR"]),
+  halaqohController.autoGenerateHalaqoh,
+);
+
+userRouter.get(
+  "/api/export/halaqoh",
+  authMiddleware.verifyToken,
+  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR"]),
+  exportController.exportHalaqoh,
 );
 
 userRouter.get(
@@ -142,8 +158,19 @@ userRouter.post(
 userRouter.get(
   "/api/assessment/tahfidz/hafalan/:nis",
   authMiddleware.verifyToken,
-  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR", "GURU"]),
+  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR", "GURU", "WALI"]),
   hafalanController.getRiwayatHafalan,
+);
+
+userRouter.put(
+  "/api/assessment/tahfidz/hafalan/setoran/:nis",
+  authMiddleware.verifyToken,
+  hafalanController.editHafalan,
+);
+userRouter.delete(
+  "/api/assessment/tahfidz/hafalan/setoran/:nis",
+  authMiddleware.verifyToken,
+  hafalanController.deleteHafalan,
 );
 
 // murajaah
@@ -157,8 +184,19 @@ userRouter.post(
 userRouter.get(
   "/api/assessment/tahfidz/murajaah/:nis",
   authMiddleware.verifyToken,
-  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR", "GURU"]),
+  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR", "GURU", "WALI"]),
   murajaahController.getRiwayatMurajaah,
+);
+
+userRouter.put(
+  "/api/assessment/tahfidz/murajaah/setoran/:nis",
+  authMiddleware.verifyToken,
+  murajaahController.editMurajaah,
+);
+userRouter.delete(
+  "/api/assessment/tahfidz/murajaah/setoran/:nis",
+  authMiddleware.verifyToken,
+  murajaahController.deleteMurajaah,
 );
 
 // tahsin
@@ -173,9 +211,22 @@ userRouter.post(
 userRouter.get(
   "/api/assessment/tahsin/:nis",
   authMiddleware.verifyToken,
-  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR", "GURU"]),
+  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR", "GURU", "WALI"]),
   tahsinController.getRiwayatTahsin,
 );
+
+userRouter.put(
+  "/api/assessment/tahsin/setoran/:nis",
+  authMiddleware.verifyToken,
+  tahsinController.editTahsin,
+);
+userRouter.delete(
+  "/api/assessment/tahsin/setoran/:nis",
+  authMiddleware.verifyToken,
+  tahsinController.deleteTahsin,
+);
+
+// import siswa
 
 userRouter.post(
   "/api/student/import",
@@ -292,6 +343,13 @@ userRouter.get(
   backupController.backupDatabase,
 );
 
+userRouter.post(
+  "/api/restore",
+  authMiddleware.verifyToken,
+  authMiddleware.requireRole(["SUPER_ADMIN"]),
+  backupController.restoreDatabase,
+);
+
 // export
 
 userRouter.get(
@@ -304,8 +362,58 @@ userRouter.get(
 userRouter.get(
   "/api/export/individual/:nis",
   authMiddleware.verifyToken,
-  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR", "GURU"]),
+  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR", "GURU", "WALI"]),
   exportController.exportIndividual,
 );
 
+userRouter.get(
+  "/api/export/ummi-word",
+  authMiddleware.verifyToken,
+  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR", "GURU"]),
+  exportController.exportLaporanUmmiWord,
+);
+// Rute Ekspor Rapor Individu Siswa (.docx)
+userRouter.get(
+  "/api/export/individual-word/:nis",
+  authMiddleware.verifyToken,
+  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR", "GURU", "WALI"]),
+  exportController.exportIndividualWord,
+);
+
+userRouter.get(
+  "/api/export/munaqosyah",
+  authMiddleware.verifyToken,
+  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR"]),
+  exportController.exportMunaqosyah,
+);
+
+// manajemen tahun akademik & transisi kenaikan kelas/semester
+userRouter.get(
+  "/api/tahun-akademik",
+  authMiddleware.verifyToken,
+  tahunAkademikController.getAllTahunAkademik,
+);
+
+userRouter.get(
+  "/api/tahun-akademik/active",
+  authMiddleware.verifyToken,
+  tahunAkademikController.getActiveTahunAkademik,
+);
+
+userRouter.post(
+  "/api/tahun-akademik",
+  authMiddleware.verifyToken,
+  authMiddleware.requireRole(["SUPER_ADMIN"]),
+  tahunAkademikController.createTahunAkademik,
+);
+
+userRouter.post(
+  "/api/tahun-akademik/transisi",
+  authMiddleware.verifyToken,
+  authMiddleware.requireRole(["SUPER_ADMIN"]),
+  tahunAkademikController.transisiSemester,
+);
+
 export { userRouter };
+
+// Trigger restart for new prisma client

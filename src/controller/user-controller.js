@@ -56,9 +56,25 @@ const login = async (req, res, next) => {
   }
 };
 
+const loginWali = async (req, res, next) => {
+  try {
+    const result = await userService.loginWali(req.body);
+    res.status(200).json({
+      status: "success",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const logout = async (req, res, next) => {
   try {
-    const result = await userService.logout(req.user.email);
+    if (req.user.role === "WALI") {
+      await userService.logoutWali(req.user.nis);
+    } else {
+      await userService.logout(req.user.email);
+    }
     res.status(200).json({
       status: "success",
       data: "OK",
@@ -86,6 +102,7 @@ export default {
   addUser,
   editUser,
   login,
+  loginWali,
   logout,
   getUsers,
   getUser,

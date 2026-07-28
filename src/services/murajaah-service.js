@@ -105,4 +105,30 @@ const getRiwayatMurajaah = async (nis) => {
   };
 };
 
-export default { addMurajaah, getRiwayatMurajaah };
+const editMurajaah = async (id, request) => {
+  const setoran = await prismaClient.setoran_Murajaah.findUnique({
+    where: { id },
+  });
+  if (!setoran) throw new ResponseError(404, "Data murajaah tidak ditemukan");
+
+  return await prismaClient.setoran_Murajaah.update({
+    where: { id },
+    data: request,
+  });
+};
+
+const deleteMurajaah = async (id) => {
+  const setoran = await prismaClient.setoran_Murajaah.findUnique({
+    where: { id },
+  });
+  if (!setoran) throw new ResponseError(404, "Data murajaah tidak ditemukan");
+
+  return await prismaClient.setoran_Murajaah.delete({ where: { id } });
+};
+
+export default {
+  addMurajaah,
+  getRiwayatMurajaah,
+  editMurajaah,
+  deleteMurajaah,
+};

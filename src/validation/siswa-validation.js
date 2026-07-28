@@ -13,10 +13,17 @@ const siswaValidation = Joi.object({
   halaqoh_tahsin_id: Joi.string().uuid(),
   halaqoh_tahfidz_id: Joi.string().uuid(),
   tahapan_tahsin: Joi.string().valid(
-    "JILID_DASAR",
+    "JILID_1",
+    "JILID_2",
+    "JILID_3",
+    "JILID_4",
+    "JILID_5",
+    "JILID_6",
+    "TILAWAH_JUZ_1_5",
+    "GHARIB",
     "TAJWID",
-    "GHORIB",
     "ALQURAN",
+    "MUNAQOSYAH",
   ),
 });
 
@@ -33,10 +40,17 @@ const editSiswaValidation = Joi.object({
   halaqoh_tahsin_id: Joi.string().uuid(),
   halaqoh_tahfidz_id: Joi.string().uuid(),
   tahapan_tahsin: Joi.string().valid(
-    "JILID_DASAR",
+    "JILID_1",
+    "JILID_2",
+    "JILID_3",
+    "JILID_4",
+    "JILID_5",
+    "JILID_6",
+    "TILAWAH_JUZ_1_5",
+    "GHARIB",
     "TAJWID",
-    "GHORIB",
     "ALQURAN",
+    "MUNAQOSYAH",
   ),
 });
 

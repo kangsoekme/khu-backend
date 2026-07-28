@@ -43,9 +43,11 @@ enum Tahapan {
   JILID_4
   JILID_5
   JILID_6
-  TAJWID
+  TILAWAH_JUZ_1_5
   GHARIB
+  TAJWID
   ALQURAN
+  MUNAQOSYAH
 }
 
 enum STATUS_KELULUSAN {
@@ -85,13 +87,17 @@ model Bab_Jilid {
 }
 
 model User {
-  id             String            @id @default(uuid())
-  nama           String
-  email          String            @unique
-  no_telp        String
-  password       String
-  role           Role              @default(GURU)
-  profile_photo  String?
+  id            String  @id @default(uuid())
+  nama          String
+  email         String  @unique
+  no_telp       String
+  password      String
+  role          Role    @default(GURU)
+  profile_photo String?
+
+  jenis_kelamin  Jenis_Kelamin @default(LAKI_LAKI)
+  is_sertifikasi Boolean       @default(false)
+
   halaqoh        Halaqoh[]
   updatedAt      DateTime          @default(now())
   createdAt      DateTime          @default(now())
@@ -110,6 +116,7 @@ model Siswa {
   nama_wali     String
   no_telp       String
   profile_photo String?
+  token         String?       @db.Text
   updatedAt     DateTime      @default(now())
   createdAt     DateTime      @default(now())
 
@@ -180,7 +187,7 @@ model Setoran_Hafalan {
   id                 String   @id @default(uuid())
   timestamp          DateTime @default(now())
   nis_siswa          String
-  halaqohId          String
+  halaqohId          String?
   no_surah           Int
   ayat_awal          Int
   ayat_akhir         Int
@@ -196,7 +203,7 @@ model Setoran_Hafalan {
   status_kelanjutan STATUS_KELANJUTAN
 
   siswa   Siswa   @relation("LaporanHafalanBaru", fields: [nis_siswa], references: [nis])
-  halaqoh Halaqoh @relation(fields: [halaqohId], references: [id])
+  halaqoh Halaqoh? @relation(fields: [halaqohId], references: [id], onDelete: SetNull)
   surah   Surah   @relation(fields: [no_surah], references: [no_surah])
 
   @@map("setoran_hafalan")
@@ -206,7 +213,7 @@ model Setoran_Murajaah {
   id           String   @id @default(uuid())
   timestamp    DateTime @default(now())
   nis_siswa    String
-  halaqohId    String
+  halaqohId    String?
   no_surah     Int
   ayat_awal    Int
   ayat_akhir   Int
@@ -219,7 +226,7 @@ model Setoran_Murajaah {
   predikat  Predikat
 
   siswa   Siswa   @relation(fields: [nis_siswa], references: [nis])
-  halaqoh Halaqoh @relation(fields: [halaqohId], references: [id])
+  halaqoh Halaqoh? @relation(fields: [halaqohId], references: [id], onDelete: SetNull)
   surah   Surah   @relation(fields: [no_surah], references: [no_surah])
 
   @@map("setoran_murajaah")
@@ -229,7 +236,7 @@ model Setoran_Tahsin {
   id                 String   @id @default(uuid())
   timestamp          DateTime @default(now())
   nis_siswa          String
-  id_kelompok        String
+  id_kelompok        String?
   hafalan_surah      Int?
   hafalan_ayat_awal  Int?
   hafalan_ayat_akhir Int?
@@ -252,7 +259,7 @@ model Setoran_Tahsin {
   status_kelanjutan STATUS_KELANJUTAN
 
   siswa        Siswa   @relation("LaporanTahsinBaru", fields: [nis_siswa], references: [nis])
-  halaqoh      Halaqoh @relation(fields: [id_kelompok], references: [id])
+  halaqoh      Halaqoh? @relation(fields: [id_kelompok], references: [id], onDelete: SetNull)
   hafalahSurah Surah?  @relation("HafalanSurah", fields: [hafalan_surah], references: [no_surah])
   surah        Surah?  @relation("LaporanBacaan", fields: [no_surah], references: [no_surah])
 
@@ -264,7 +271,7 @@ model Setoran_Tahsin {
 model Ujian_Kenaikan {
   id          String @id @default(uuid())
   nis_siswa   String
-  id_kelompok String
+  id_kelompok String?
 
   tahapan Tahapan
 
@@ -273,7 +280,7 @@ model Ujian_Kenaikan {
   status_kelulusan STATUS_KELULUSAN
 
   siswa   Siswa   @relation(fields: [nis_siswa], references: [nis])
-  halaqoh Halaqoh @relation(fields: [id_kelompok], references: [id])
+  halaqoh Halaqoh? @relation(fields: [id_kelompok], references: [id], onDelete: SetNull)
 
   @@map("ujian_kenaikan")
 }
@@ -282,7 +289,6 @@ model Ujian_Pretest {
   id        String @id @default(uuid())
   nis_siswa String
 
-  nilai      String
   keterangan String
 
   tahapan Tahapan

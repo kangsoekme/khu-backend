@@ -6,8 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "server": "nodemon src/main.js",
-    "worker": "nodemon src/worker/excel-worker.js",
-    "dev": "concurrently \"npm run server\" \"npm run worker\" "
+    "dev": "nodemon src/main.js"
   },
   "keywords": [],
   "author": "",
@@ -19,6 +18,7 @@
     "amqplib": "^2.0.1",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
+    "docxtemplater": "^3.69.3",
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
@@ -26,6 +26,7 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
     "pg": "^8.22.0",
+    "pizzip": "^3.2.0",
     "uuid": "^14.0.1",
     "xlsx": "^0.18.5"
   },

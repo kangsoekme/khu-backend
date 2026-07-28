@@ -52,6 +52,7 @@ const addHalaqoh = async (request) => {
               select: {
                 nis: true,
                 nama: true,
+                tahapan_tahsin: true,
 
                 riwayatKelas: {
                   where: { status: "AKTIF" },
@@ -60,6 +61,19 @@ const addHalaqoh = async (request) => {
 
                 alamat: true,
                 no_telp: true,
+                setoranTahsin: {
+                  orderBy: { timestamp: "desc" },
+                  take: 1,
+                  include: { surah: true },
+                },
+                ujianPretest: {
+                  orderBy: { id: "desc" },
+                  take: 1,
+                  select: {
+                    tahapan: true,
+                    keterangan: true,
+                  },
+                },
               },
             }
           : false,
@@ -94,6 +108,7 @@ const getAllHalaqoh = async () => {
         select: {
           nis: true,
           nama: true,
+          tahapan_tahsin: true,
 
           riwayatKelas: {
             where: { status: "AKTIF" },
@@ -102,6 +117,19 @@ const getAllHalaqoh = async () => {
 
           alamat: true,
           no_telp: true,
+          setoranTahsin: {
+            orderBy: { timestamp: "desc" },
+            take: 1,
+            include: { surah: true },
+          },
+          ujianPretest: {
+            orderBy: { id: "desc" },
+            take: 1,
+            select: {
+              tahapan: true,
+              keterangan: true,
+            },
+          },
         },
       },
       siswaTahfidz: {
@@ -133,6 +161,7 @@ const getHalaqoh = async (halaqohId) => {
         select: {
           nis: true,
           nama: true,
+          tahapan_tahsin: true,
 
           riwayatKelas: {
             where: { status: "AKTIF" },
@@ -141,6 +170,19 @@ const getHalaqoh = async (halaqohId) => {
 
           alamat: true,
           no_telp: true,
+          setoranTahsin: {
+            orderBy: { timestamp: "desc" },
+            take: 1,
+            include: { surah: true },
+          },
+          ujianPretest: {
+            orderBy: { id: "desc" },
+            take: 1,
+            select: {
+              tahapan: true,
+              keterangan: true,
+            },
+          },
         },
       },
       siswaTahfidz: {
@@ -155,6 +197,11 @@ const getHalaqoh = async (halaqohId) => {
 
           alamat: true,
           no_telp: true,
+          setoranHafalan: {
+            orderBy: { timestamp: "desc" },
+            take: 1,
+            include: { surah: true },
+          },
         },
       },
     },
@@ -219,6 +266,7 @@ const editHalaqoh = async (halaqohId, request) => {
         select: {
           nis: true,
           nama: true,
+          tahapan_tahsin: true,
 
           riwayatKelas: {
             where: { status: "AKTIF" },
@@ -227,6 +275,19 @@ const editHalaqoh = async (halaqohId, request) => {
 
           alamat: true,
           no_telp: true,
+          setoranTahsin: {
+            orderBy: { timestamp: "desc" },
+            take: 1,
+            include: { surah: true },
+          },
+          ujianPretest: {
+            orderBy: { id: "desc" },
+            take: 1,
+            select: {
+              tahapan: true,
+              keterangan: true,
+            },
+          },
         },
       },
       siswaTahfidz: {
@@ -258,26 +319,160 @@ const deleteHalaqoh = async (halaqohId) => {
     throw new ResponseError(404, "Halaqoh not found");
   }
 
-  await prismaClient.setoran_Hafalan.deleteMany({
-    where: { halaqohId: halaqohId },
-  });
-
-  await prismaClient.setoran_Tahsin.deleteMany({
-    where: { id_kelompok: halaqohId },
-  });
-
-  await prismaClient.setoran_Murajaah.deleteMany({
-    where: { halaqohId: halaqohId },
-  });
-
-  await prismaClient.ujian_Kenaikan.deleteMany({
-    where: { id_kelompok: halaqohId },
-  });
-
   return prismaClient.halaqoh.delete({
     where: {
       id: halaqohId,
     },
+  });
+};
+
+const autoGenerateHalaqoh = async (kategori, targetSize = 11) => {
+  // 1. Ambil semua siswa yang belum punya halaqoh di kategori tersebut
+  const waitingStudents = await prismaClient.siswa.findMany({
+    where:
+      kategori === "TAHSIN"
+        ? { halaqoh_tahsin_id: null }
+        : { halaqoh_tahfidz_id: null },
+    include: {
+      ujianPretest: { orderBy: { id: "desc" }, take: 1 },
+      setoranTahsin: { orderBy: { timestamp: "desc" }, take: 1 },
+      setoranHafalan: { orderBy: { timestamp: "desc" }, take: 1 },
+    },
+  });
+
+  if (waitingStudents.length === 0) {
+    throw new ResponseError(400, "Tidak ada siswa yang menunggu kelompok");
+  }
+
+  // 💡 KRITERIA 2: Untuk TAHSIN, filter hanya siswa yang SUDAH PRETEST atau sudah ada progress setoran/tahapan
+  let validStudents = waitingStudents;
+  if (kategori === "TAHSIN") {
+    validStudents = waitingStudents.filter(
+      (s) =>
+        (s.ujianPretest && s.ujianPretest.length > 0) ||
+        (s.setoranTahsin && s.setoranTahsin.length > 0) ||
+        s.tahapan_tahsin !== null,
+    );
+  }
+
+  if (validStudents.length === 0) {
+    throw new ResponseError(
+      400,
+      kategori === "TAHSIN"
+        ? "Tidak ada siswa yang siap (Siswa untuk Tahsin wajib sudah melakukan Ujian Pretest atau memiliki riwayat Tahsin)."
+        : "Tidak ada siswa yang menunggu kelompok Tahfidz.",
+    );
+  }
+
+  // 💡 KRITERIA 1: Ambil guru GURU dan filter yang BELUM memegang halaqoh di kategori ini (1 Guru Max 1 Tahsin & 1 Tahfidz)
+  const guruList = await prismaClient.user.findMany({
+    where: { role: "GURU" },
+    include: { halaqoh: true }, // Sertakan halaqoh yang sudah diajar
+  });
+
+  const availableGuru = guruList.filter((g) => {
+    // Cek apakah guru ini sudah mengajar kategori yang sedang dibentuk
+    const hasCurrentKategori = g.halaqoh.some((h) => h.kategori === kategori);
+    return !hasCurrentKategori;
+  });
+
+  if (availableGuru.length === 0) {
+    throw new ResponseError(
+      400,
+      `Semua guru sudah memegang maksimal 1 halaqoh ${kategori}. Tidak ada guru yang tersisa.`,
+    );
+  }
+
+  // Urutkan guru yang tersedia: untuk TAHSIN, utamakan yang bersertifikasi (is_sertifikasi === true)
+  const prioritizedGuru = [...availableGuru].sort((a, b) => {
+    if (kategori === "TAHSIN") {
+      const certA = a.is_sertifikasi === true ? 1 : 0;
+      const certB = b.is_sertifikasi === true ? 1 : 0;
+      return certB - certA;
+    }
+    return 0;
+  });
+
+  // 💡 KRITERIA 4: Kelompokkan siswa berdasarkan Jilid/Tahapan terlebih dahulu agar dalam 1 kelompok kemampuannya setara
+  const grouped = validStudents.reduce((acc, s) => {
+    let key = "Kelompok Umum";
+    if (kategori === "TAHSIN") {
+      key =
+        s.setoranTahsin[0]?.tahapan ||
+        s.ujianPretest[0]?.tahapan ||
+        s.tahapan_tahsin ||
+        "Ummi 1";
+    } else {
+      key = s.setoranHafalan[0]?.no_surah
+        ? `Juz 30 (Surah ${s.setoranHafalan[0].no_surah})`
+        : "Tahfidz";
+    }
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(s);
+    return acc;
+  }, {});
+
+  // 💡 KRITERIA 3: Cek jumlah halaqoh yang sudah ada di database untuk melacak nomor kelas berikutnya
+  const existingCount = await prismaClient.halaqoh.count({
+    where: { kategori: kategori },
+  });
+  let kelasCounter = existingCount + 1;
+  const prefix = kategori === "TAHSIN" ? "Ummi" : "Tahfidz";
+
+  // Pecah menjadi kelompok ukuran 8-13
+  const halaqohToCreate = [];
+  let guruIdx = 0;
+
+  Object.entries(grouped).forEach(([groupName, students]) => {
+    let i = 0;
+    while (i < students.length) {
+      let size = targetSize;
+      const sisa = students.length - (i + size);
+      if (sisa > 0 && sisa < 8) size += Math.floor(sisa / 2); // Hindari kelompok terlalu kecil (< 8)
+
+      const chunk = students.slice(i, i + size);
+      const assignedGuru = prioritizedGuru[guruIdx % prioritizedGuru.length];
+      guruIdx++;
+
+      // 💡 Penamaan baku: "Ummi - Kelas 1", "Ummi - Kelas 2" dst
+      const namaHalaqoh = `${prefix} - Kelas ${kelasCounter++}`;
+
+      halaqohToCreate.push({
+        nama: namaHalaqoh,
+        kategori: kategori,
+        userId: assignedGuru.id,
+        nisList: chunk.map((s) => s.nis),
+      });
+
+      i += size;
+    }
+  });
+
+  // Validasi akhir kuota guru: pastikan jumlah kelompok tidak melebihi guru yang tersedia
+  if (halaqohToCreate.length > prioritizedGuru.length) {
+    throw new ResponseError(
+      400,
+      `Jumlah guru yang tersedia (${prioritizedGuru.length} guru) tidak mencukupi untuk memegang ${halaqohToCreate.length} kelompok ${kategori} baru. (Aturan: 1 guru maksimal 1 halaqoh ${kategori}).`,
+    );
+  }
+
+  // 5. Simpan secara atomik dengan Prisma Transaction
+  return prismaClient.$transaction(async (tx) => {
+    const createdCount = [];
+    for (const item of halaqohToCreate) {
+      const newHalaqoh = await tx.halaqoh.create({
+        data: {
+          nama: item.nama,
+          kategori: item.kategori,
+          userId: item.userId,
+          [kategori === "TAHSIN" ? "siswaTahsin" : "siswaTahfidz"]: {
+            connect: item.nisList.map((nis) => ({ nis })),
+          },
+        },
+      });
+      createdCount.push(newHalaqoh);
+    }
+    return createdCount;
   });
 };
 
@@ -287,4 +482,5 @@ export default {
   getHalaqoh,
   editHalaqoh,
   deleteHalaqoh,
+  autoGenerateHalaqoh,
 };

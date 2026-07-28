@@ -12,9 +12,11 @@ const tahsinValidation = Joi.object({
       "JILID_4",
       "JILID_5",
       "JILID_6",
-      "TAJWID",
+      "TILAWAH_JUZ_1_5",
       "GHARIB",
+      "TAJWID",
       "ALQURAN",
+      "MUNAQOSYAH",
     )
     .required(),
 
@@ -38,9 +40,6 @@ const tahsinValidation = Joi.object({
 
 const pretestValidation = Joi.object({
   nis_siswa: Joi.string().required(),
-  nilai: Joi.string()
-    .valid("A+", "A", "B+", "B", "B-", "C+", "C", "C-", "D")
-    .required(),
   keterangan: Joi.string().allow("").optional(),
   tahapan: Joi.string()
     .valid(
@@ -50,9 +49,11 @@ const pretestValidation = Joi.object({
       "JILID_4",
       "JILID_5",
       "JILID_6",
-      "TAJWID",
+      "TILAWAH_JUZ_1_5",
       "GHARIB",
+      "TAJWID",
       "ALQURAN",
+      "MUNAQOSYAH",
     )
     .required(),
 });

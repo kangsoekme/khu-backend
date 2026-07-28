@@ -113,4 +113,25 @@ const getRiwayatHafalan = async (nis) => {
   };
 };
 
-export default { addHafalan, getRiwayatHafalan };
+const editHafalan = async (id, request) => {
+  const setoran = await prismaClient.setoran_Hafalan.findUnique({
+    where: { id },
+  });
+  if (!setoran) throw new ResponseError(404, "Data hafalan tidak ditemukan");
+
+  return await prismaClient.setoran_Hafalan.update({
+    where: { id },
+    data: request,
+  });
+};
+
+const deleteHafalan = async (id) => {
+  const setoran = await prismaClient.setoran_Hafalan.findUnique({
+    where: { id },
+  });
+  if (!setoran) throw new ResponseError(404, "Data hafalan tidak ditemukan");
+
+  return await prismaClient.setoran_Hafalan.delete({ where: { id } });
+};
+
+export default { addHafalan, getRiwayatHafalan, editHafalan, deleteHafalan };

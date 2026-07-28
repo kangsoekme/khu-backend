@@ -11,11 +11,23 @@ const verifyToken = async (req, res, next) => {
 
   const token = authHeader.split(" ")[1] || authHeader;
 
-  const user = await prismaClient.user.findFirst({
+  let user = await prismaClient.user.findFirst({
     where: {
       token: token,
     },
   });
+
+  if (!user) {
+    const wali = await prismaClient.siswa.findFirst({
+      where: {
+        token: token,
+      },
+    });
+
+    if (wali) {
+      user = { ...wali, role: "WALI" };
+    }
+  }
 
   if (!user) {
     return res.status(401).json({

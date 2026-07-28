@@ -15,4 +15,17 @@ const backupDatabase = async (req, res, next) => {
   }
 };
 
-export default { backupDatabase };
+const restoreDatabase = async (req, res, next) => {
+  try {
+    const backupData = req.body;
+    const result = await backupService.restoreDatabaseBackup(backupData);
+
+    res.status(200).json({
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+//
+export default { backupDatabase, restoreDatabase };

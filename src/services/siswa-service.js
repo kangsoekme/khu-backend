@@ -1,3 +1,6 @@
+import fs from "fs";
+import ExcelJS from "exceljs";
+
 import { prismaClient } from "../application/database.js";
 import { ResponseError } from "../error/response-error.js";
 import {
@@ -8,28 +11,69 @@ import { validate } from "../validation/validation.js";
 
 const formatKelas = (kelasInput) => {
   if (!kelasInput) return kelasInput;
-
   const regex = /^([1-6]|I{1,3}|IV|V|VI)[\s-]*([a-zA-Z])$/i;
-
   const match = kelasInput.match(regex);
-
   if (match) {
-    const angkaRomawi = {
-      1: "I",
-      2: "II",
-      3: "III",
-      4: "IV",
-      5: "V",
-      6: "VI",
-    };
+    const angkaRomawi = { 1: "I", 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI" };
     const romawi = angkaRomawi[match[1]] || match[1].toUpperCase();
-
-    const huruf = match[2].toUpperCase();
-
-    return `${romawi}-${huruf}`;
+    return `${romawi}-${match[2].toUpperCase()}`;
   }
-
   return kelasInput.toUpperCase();
+};
+
+const importSiswaExcelSync = async (filePath) => {
+  try {
+    const tahunAkademik = await prismaClient.tahun_Akademik.findFirst({
+      where: { is_active: true },
+    });
+    if (!tahunAkademik)
+      throw new ResponseError(400, "Tahun akademik aktif tidak ditemukan");
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(filePath);
+    const worksheet = workbook.getWorksheet(1);
+    const dataSiswa = [];
+    const dataRiwayat = [];
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 1) {
+        const nis = row.getCell(1).value?.toString();
+        const nama = row.getCell(2).value?.toString();
+        if (nis && nama) {
+          dataSiswa.push({
+            nis,
+            nama,
+            jenis_kelamin:
+              row.getCell(3).value?.toString() === "L"
+                ? "LAKI_LAKI"
+                : "PEREMPUAN",
+            tanggal_lahir: new Date(row.getCell(4).value || "2010-01-01"),
+            alamat: row.getCell(5).value?.toString() || "-",
+            nama_wali: row.getCell(6).value?.toString() || "-",
+            no_telp: row.getCell(7).value?.toString() || "-",
+            profile_photo: row.getCell(9).value?.toString() || null,
+          });
+          const kelas = formatKelas(row.getCell(8).value?.toString() || "I-A");
+          dataRiwayat.push({
+            nis_siswa: nis,
+            tahun_id: tahunAkademik.id,
+            nama_kelas: kelas,
+            status: "AKTIF",
+          });
+        }
+      }
+    });
+    if (dataSiswa.length > 0) {
+      await prismaClient.$transaction(async (tx) => {
+        await tx.siswa.createMany({ data: dataSiswa, skipDuplicates: true });
+        await tx.riwayat_Kelas.createMany({
+          data: dataRiwayat,
+          skipDuplicates: true,
+        });
+      });
+    }
+    return { total_imported: dataSiswa.length };
+  } finally {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath); // Hapus file temporer setelah selesai
+  }
 };
 
 const addSiswa = async (request) => {
@@ -200,6 +244,45 @@ const getAllSiswa = async () => {
       halaqoh_tahsin_id: true,
 
       tahapan_tahsin: true,
+
+      setoranTahsin: {
+        orderBy: { timestamp: "desc" },
+        take: 1,
+        select: {
+          jilid: true,
+          bab: true,
+          materi: true,
+          no_surah: true,
+          ayat_akhir: true,
+          tahapan: true,
+          surah: {
+            select: {
+              nama_surah: true,
+            },
+          },
+        },
+      },
+      setoranHafalan: {
+        orderBy: { timestamp: "desc" },
+        take: 1,
+        select: {
+          no_surah: true,
+          ayat_akhir: true,
+          surah: {
+            select: {
+              nama_surah: true,
+            },
+          },
+        },
+      },
+      ujianPretest: {
+        orderBy: { id: "desc" },
+        take: 1,
+        select: {
+          tahapan: true,
+          keterangan: true,
+        },
+      },
     },
     orderBy: {
       nama: "asc",
@@ -238,6 +321,45 @@ const getSiswa = async (nis) => {
       },
 
       tahapan_tahsin: true,
+
+      setoranTahsin: {
+        orderBy: { timestamp: "desc" },
+        take: 1,
+        select: {
+          jilid: true,
+          bab: true,
+          materi: true,
+          no_surah: true,
+          ayat_akhir: true,
+          tahapan: true,
+          surah: {
+            select: {
+              nama_surah: true,
+            },
+          },
+        },
+      },
+      setoranHafalan: {
+        orderBy: { timestamp: "desc" },
+        take: 1,
+        select: {
+          no_surah: true,
+          ayat_akhir: true,
+          surah: {
+            select: {
+              nama_surah: true,
+            },
+          },
+        },
+      },
+      ujianPretest: {
+        orderBy: { id: "desc" },
+        take: 1,
+        select: {
+          tahapan: true,
+          keterangan: true,
+        },
+      },
     },
   });
 
@@ -277,6 +399,10 @@ const deleteSiswa = async (nis) => {
     where: { nis_siswa: nis },
   });
 
+  await prismaClient.pengajuan_Ujian.deleteMany({
+    where: { nis_siswa: nis },
+  });
+
   await prismaClient.riwayat_Kelas.deleteMany({
     where: { nis_siswa: nis },
   });
@@ -287,6 +413,7 @@ const deleteSiswa = async (nis) => {
 };
 
 export default {
+  importSiswaExcelSync,
   addSiswa,
   editSiswa,
   getAllSiswa,

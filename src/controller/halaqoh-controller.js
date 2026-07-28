@@ -105,10 +105,28 @@ const deleteHalaqoh = async (req, res, next) => {
   }
 };
 
+const autoGenerateHalaqoh = async (req, res, next) => {
+  try {
+    const { kategori, targetSize } = req.body;
+    const result = await halaqohService.autoGenerateHalaqoh(
+      kategori,
+      targetSize,
+    );
+    res.status(200).json({
+      status: "success",
+      message: `${result.length} Kelompok Halaqoh berhasil dibentuk`,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   addHalaqoh,
   getAllHalaqoh,
   getHalaqoh,
   updateHalaqoh,
   deleteHalaqoh,
+  autoGenerateHalaqoh,
 };

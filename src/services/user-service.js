@@ -53,6 +53,8 @@ const addUser = async (request) => {
       email: true,
       no_telp: true,
       role: true,
+      jenis_kelamin: true,
+      is_sertifikasi: true,
       profile_photo: true,
     },
   });
@@ -102,6 +104,8 @@ const editUser = async (userId, request) => {
       email: true,
       no_telp: true,
       role: true,
+      jenis_kelamin: true,
+      is_sertifikasi: true,
       profile_photo: true,
     },
   });
@@ -115,6 +119,8 @@ const getUsers = async () => {
       email: true,
       no_telp: true,
       role: true,
+      jenis_kelamin: true,
+      is_sertifikasi: true,
       profile_photo: true,
     },
     orderBy: {
@@ -132,6 +138,8 @@ const getUser = async (userId) => {
       email: true,
       no_telp: true,
       role: true,
+      jenis_kelamin: true,
+      is_sertifikasi: true,
       profile_photo: true,
     },
   });
@@ -245,6 +253,10 @@ const deleteUser = async (userId) => {
       },
     });
 
+    await prismaClient.pengajuan_Ujian.deleteMany({
+      where: { nis_siswa: nis },
+    });
+
     await prismaClient.ujian_Kenaikan.deleteMany({
       where: {
         id_kelompok: { in: halaqohId },
@@ -263,12 +275,63 @@ const deleteUser = async (userId) => {
   });
 };
 
+const loginWali = async (request) => {
+  const { nis, password } = request;
+  
+  if (!nis || !password) {
+    throw new ResponseError(400, "NIS dan password harus diisi");
+  }
+
+  const siswa = await prismaClient.siswa.findUnique({
+    where: { nis: nis },
+  });
+
+  if (!siswa) {
+    throw new ResponseError(401, "NIS atau Tanggal Lahir salah");
+  }
+
+  const d = new Date(siswa.tanggal_lahir);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  const expectedPassword = `${day}${month}${year}`;
+
+  if (password !== expectedPassword) {
+    throw new ResponseError(401, "NIS atau Tanggal Lahir salah");
+  }
+
+  const token = uuid();
+
+  const updatedSiswa = await prismaClient.siswa.update({
+    data: { token: token },
+    where: { nis: nis },
+    select: { token: true, nis: true, nama: true }
+  });
+  
+  return {
+    token: updatedSiswa.token,
+    role: "WALI",
+    nama: updatedSiswa.nama,
+    nis: updatedSiswa.nis
+  };
+};
+
+const logoutWali = async (nis) => {
+  return prismaClient.siswa.update({
+    where: { nis: nis },
+    data: { token: null },
+    select: { nis: true },
+  });
+};
+
 export default {
   addUser,
   editUser,
   login,
+  loginWali,
   getUsers,
   getUser,
   logout,
+  logoutWali,
   deleteUser,
 };
