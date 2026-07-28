@@ -3,5 +3,4 @@ node_modules
 generated
 postman
 prisma/migrations
-docker-compose.yml
 prisma/seed.js
