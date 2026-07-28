@@ -220,8 +220,25 @@ const editSiswa = async (nis, request) => {
   });
 };
 
-const getAllSiswa = async () => {
-  return await prismaClient.siswa.findMany({
+const getAllSiswa = async (page = 1, limit = 10, search = "") => {
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const where = search
+    ? {
+        OR: [
+          { nama: { contains: search, mode: "insensitive" } },
+          { nis: { contains: search, mode: "insensitive" } },
+        ],
+      }
+    : {};
+
+  const totalData = await prismaClient.siswa.count({ where });
+  const totalPages = Math.ceil(totalData / parseInt(limit));
+
+  const data = await prismaClient.siswa.findMany({
+    where,
+    skip,
+    take: parseInt(limit),
+    orderBy: { createdAt: "desc" },
     select: {
       nis: true,
       nama: true,
@@ -288,6 +305,13 @@ const getAllSiswa = async () => {
       nama: "asc",
     },
   });
+
+  return {
+    data,
+    totalData,
+    totalPages,
+    currentPage: parseInt(page),
+  };
 };
 
 const getSiswa = async (nis) => {
@@ -379,37 +403,139 @@ const deleteSiswa = async (nis) => {
     throw new ResponseError(404, "Data siswa tidak ditemukan");
   }
 
-  await prismaClient.setoran_Hafalan.deleteMany({
-    where: { nis_siswa: nis },
-  });
-
-  await prismaClient.setoran_Tahsin.deleteMany({
-    where: { nis_siswa: nis },
-  });
-
-  await prismaClient.setoran_Murajaah.deleteMany({
-    where: { nis_siswa: nis },
-  });
-
-  await prismaClient.ujian_Kenaikan.deleteMany({
-    where: { nis_siswa: nis },
-  });
-
-  await prismaClient.ujian_Pretest.deleteMany({
-    where: { nis_siswa: nis },
-  });
-
-  await prismaClient.pengajuan_Ujian.deleteMany({
-    where: { nis_siswa: nis },
-  });
-
-  await prismaClient.riwayat_Kelas.deleteMany({
-    where: { nis_siswa: nis },
-  });
-
   return prismaClient.siswa.delete({
     where: { nis: nis },
   });
+};
+
+const deleteBulkSiswa = async (nisArray) => {
+  if (!nisArray || nisArray.length === 0) {
+    throw new ResponseError(400, "Tidak ada user yang dipilih");
+  }
+
+  return prismaClient.siswa.deleteMany({ where: { nis: { in: nisArray } } });
+};
+
+const getWaitingPretest = async () => {
+  const data = await prismaClient.siswa.findMany({
+    where: { tahapan_tahsin: null },
+    select: {
+      nis: true,
+      nama: true,
+      jenis_kelamin: true,
+      tanggal_lahir: true,
+      alamat: true,
+      nama_wali: true,
+      no_telp: true,
+      riwayatKelas: {
+        where: { status: "AKTIF" },
+        select: { nama_kelas: true },
+      },
+      profile_photo: true,
+      createdAt: true,
+      updatedAt: true,
+      halaqoh_tahfidz_id: true,
+      halaqoh_tahsin_id: true,
+      tahapan_tahsin: true,
+      setoranTahsin: {
+        orderBy: { timestamp: "desc" },
+        take: 1,
+        select: {
+          jilid: true,
+          bab: true,
+          materi: true,
+          no_surah: true,
+          ayat_akhir: true,
+          tahapan: true,
+          surah: { select: { nama_surah: true } },
+        },
+      },
+      setoranHafalan: {
+        orderBy: { timestamp: "desc" },
+        take: 1,
+        select: {
+          no_surah: true,
+          ayat_akhir: true,
+          surah: { select: { nama_surah: true } },
+        },
+      },
+      ujianPretest: {
+        orderBy: { id: "desc" },
+        take: 1,
+        select: { tahapan: true, keterangan: true },
+      },
+    },
+    orderBy: { nama: "asc" },
+  });
+  return { data };
+};
+
+const getWaitingHalaqoh = async (kategori) => {
+  let where = {};
+  if (kategori === "TAHSIN") {
+    where = {
+      halaqoh_tahsin_id: null,
+      OR: [
+        { ujianPretest: { some: {} } },
+        { setoranTahsin: { some: {} } },
+        { tahapan_tahsin: { not: null } },
+      ],
+    };
+  } else {
+    where = { halaqoh_tahfidz_id: null };
+  }
+
+  const data = await prismaClient.siswa.findMany({
+    where,
+    select: {
+      nis: true,
+      nama: true,
+      jenis_kelamin: true,
+      tanggal_lahir: true,
+      alamat: true,
+      nama_wali: true,
+      no_telp: true,
+      riwayatKelas: {
+        where: { status: "AKTIF" },
+        select: { nama_kelas: true },
+      },
+      profile_photo: true,
+      createdAt: true,
+      updatedAt: true,
+      halaqoh_tahfidz_id: true,
+      halaqoh_tahsin_id: true,
+      tahapan_tahsin: true,
+      setoranTahsin: {
+        orderBy: { timestamp: "desc" },
+        take: 1,
+        select: {
+          jilid: true,
+          bab: true,
+          materi: true,
+          no_surah: true,
+          ayat_akhir: true,
+          tahapan: true,
+          surah: { select: { nama_surah: true } },
+        },
+      },
+      setoranHafalan: {
+        orderBy: { timestamp: "desc" },
+        take: 1,
+        select: {
+          no_surah: true,
+          ayat_akhir: true,
+          surah: { select: { nama_surah: true } },
+        },
+      },
+      ujianPretest: {
+        orderBy: { id: "desc" },
+        take: 1,
+        select: { tahapan: true, keterangan: true },
+      },
+    },
+    orderBy: { nama: "asc" },
+  });
+  return { data };
 };
 
 export default {
@@ -419,4 +545,7 @@ export default {
   getAllSiswa,
   getSiswa,
   deleteSiswa,
+  deleteBulkSiswa,
+  getWaitingPretest,
+  getWaitingHalaqoh,
 };

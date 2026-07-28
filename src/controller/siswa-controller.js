@@ -21,8 +21,9 @@ const editSiswa = async (req, res, next) => {
 
 const getAllSiswa = async (req, res, next) => {
   try {
-    const result = await siswaService.getAllSiswa();
-    res.status(200).json({ status: "success", data: result });
+    const { page, limit, search } = req.query;
+    const result = await siswaService.getAllSiswa(page, limit, search);
+    res.status(200).json({ status: "success", data: result.data, meta: { totalData: result.totalData, totalPages: result.totalPages, currentPage: result.currentPage } });
   } catch (error) {
     next(error);
   }
@@ -31,14 +32,15 @@ const getAllSiswa = async (req, res, next) => {
 const getSiswa = async (req, res, next) => {
   try {
     const nis = req.params.nis;
-    
+
     if (req.user.role === "WALI" && req.user.nis !== nis) {
       return res.status(403).json({
         status: "error",
-        message: "Akses ditolak, Anda hanya dapat melihat profil anak Anda sendiri.",
+        message:
+          "Akses ditolak, Anda hanya dapat melihat profil anak Anda sendiri.",
       });
     }
-    
+
     const result = await siswaService.getSiswa(nis);
     res.status(200).json({ status: "success", data: result });
   } catch (error) {
@@ -77,6 +79,37 @@ const importSiswaExcel = async (req, res, next) => {
   }
 };
 
+const deleteBulkSiswa = async (req, res, next) => {
+  try {
+    const { nis_array } = req.body;
+    await siswaService.deleteBulkSiswa(nis_array);
+    res
+      .status(200)
+      .json({ status: "success", data: "Berhasil menghapus siswa terpilih" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getWaitingPretest = async (req, res, next) => {
+  try {
+    const result = await siswaService.getWaitingPretest();
+    res.status(200).json({ status: "success", data: result.data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getWaitingHalaqoh = async (req, res, next) => {
+  try {
+    const { kategori } = req.query;
+    const result = await siswaService.getWaitingHalaqoh(kategori);
+    res.status(200).json({ status: "success", data: result.data });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   addSiswa,
   getAllSiswa,
@@ -84,4 +117,7 @@ export default {
   editSiswa,
   deleteSiswa,
   importSiswaExcel,
+  deleteBulkSiswa,
+  getWaitingPretest,
+  getWaitingHalaqoh,
 };

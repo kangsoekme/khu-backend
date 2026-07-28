@@ -21,10 +21,16 @@ const editUser = async (req, res, next) => {
 
 const getUsers = async (req, res, next) => {
   try {
-    const result = await userService.getUsers();
+    const { page, limit, search } = req.query;
+    const result = await userService.getUsers(page, limit, search);
     res.status(200).json({
       status: "success",
-      data: result,
+      data: result.data,
+      meta: {
+        totalData: result.totalData,
+        totalPages: result.totalPages,
+        currentPage: result.currentPage,
+      },
     });
   } catch (error) {
     next(error);
@@ -98,6 +104,18 @@ const deleteUser = async (req, res, next) => {
   }
 };
 
+const deleteBulkUsers = async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    await userService.deleteBulkUsers(ids);
+    res
+      .status(200)
+      .json({ status: "success", data: "Berhasil menghapus user terpilih" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   addUser,
   editUser,
@@ -107,4 +125,5 @@ export default {
   getUsers,
   getUser,
   deleteUser,
+  deleteBulkUsers,
 };

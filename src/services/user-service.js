@@ -111,8 +111,24 @@ const editUser = async (userId, request) => {
   });
 };
 
-const getUsers = async () => {
-  return await prismaClient.user.findMany({
+const getUsers = async (page = 1, limit = 10, search = "") => {
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const where = search
+    ? {
+        OR: [
+          { nama: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } },
+        ],
+      }
+    : {};
+
+  const totalData = await prismaClient.user.count({ where });
+  const totalPages = Math.ceil(totalData / parseInt(limit));
+
+  const data = await prismaClient.user.findMany({
+    where,
+    skip,
+    take: parseInt(limit),
     select: {
       id: true,
       nama: true,
@@ -127,6 +143,13 @@ const getUsers = async () => {
       nama: "asc",
     },
   });
+
+  return {
+    data,
+    totalData,
+    totalPages,
+    currentPage: parseInt(page),
+  };
 };
 
 const getUser = async (userId) => {
@@ -225,51 +248,6 @@ const deleteUser = async (userId) => {
     throw new ResponseError(404, "User not found");
   }
 
-  const hasHalaqoh = await prismaClient.halaqoh.findMany({
-    where: {
-      userId: userId,
-    },
-    select: { id: true },
-  });
-
-  const halaqohId = hasHalaqoh.map((h) => h.id);
-
-  if (halaqohId.length > 0) {
-    await prismaClient.setoran_Tahsin.deleteMany({
-      where: {
-        id_kelompok: { in: halaqohId },
-      },
-    });
-
-    await prismaClient.setoran_Hafalan.deleteMany({
-      where: {
-        halaqohId: { in: halaqohId },
-      },
-    });
-
-    await prismaClient.setoran_Murajaah.deleteMany({
-      where: {
-        halaqohId: { in: halaqohId },
-      },
-    });
-
-    await prismaClient.pengajuan_Ujian.deleteMany({
-      where: { nis_siswa: nis },
-    });
-
-    await prismaClient.ujian_Kenaikan.deleteMany({
-      where: {
-        id_kelompok: { in: halaqohId },
-      },
-    });
-
-    await prismaClient.halaqoh.deleteMany({
-      where: {
-        userId: userId,
-      },
-    });
-  }
-
   return prismaClient.user.delete({
     where: { id: userId },
   });
@@ -277,7 +255,7 @@ const deleteUser = async (userId) => {
 
 const loginWali = async (request) => {
   const { nis, password } = request;
-  
+
   if (!nis || !password) {
     throw new ResponseError(400, "NIS dan password harus diisi");
   }
@@ -291,8 +269,8 @@ const loginWali = async (request) => {
   }
 
   const d = new Date(siswa.tanggal_lahir);
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
   const year = d.getFullYear();
   const expectedPassword = `${day}${month}${year}`;
 
@@ -305,14 +283,14 @@ const loginWali = async (request) => {
   const updatedSiswa = await prismaClient.siswa.update({
     data: { token: token },
     where: { nis: nis },
-    select: { token: true, nis: true, nama: true }
+    select: { token: true, nis: true, nama: true },
   });
-  
+
   return {
     token: updatedSiswa.token,
     role: "WALI",
     nama: updatedSiswa.nama,
-    nis: updatedSiswa.nis
+    nis: updatedSiswa.nis,
   };
 };
 
@@ -321,6 +299,15 @@ const logoutWali = async (nis) => {
     where: { nis: nis },
     data: { token: null },
     select: { nis: true },
+  });
+};
+
+const deleteBulkUsers = async (userIds) => {
+  if (!userIds || userIds.length === 0) {
+    throw new ResponseError(400, "Tidak ada user yang dipilih");
+  }
+  return prismaClient.user.deleteMany({
+    where: { id: { in: userIds } },
   });
 };
 
@@ -334,4 +321,5 @@ export default {
   logout,
   logoutWali,
   deleteUser,
+  deleteBulkUsers,
 };

@@ -5,7 +5,6 @@ const userRouter = new express.Router();
 import siswaController from "../controller/siswa-controller.js";
 import userController from "../controller/user-controller.js";
 import halaqohController from "../controller/halaqoh-controller.js";
-import setoranHafalanController from "../controller/hafalan-controller.js";
 import hafalanController from "../controller/hafalan-controller.js";
 import murajaahController from "../controller/murajaah-controller.js";
 import tahsinController from "../controller/tahsin-controller.js";
@@ -62,6 +61,13 @@ userRouter.delete(
   userController.deleteUser,
 ); // delete user
 
+userRouter.post(
+  "/api/users/bulk-delete",
+  authMiddleware.verifyToken,
+  authMiddleware.requireRole(["SUPER_ADMIN"]),
+  userController.deleteBulkUsers,
+); // hapus jamai
+
 // siswa
 
 userRouter.post(
@@ -69,6 +75,20 @@ userRouter.post(
   authMiddleware.verifyToken,
   authMiddleware.requireRole(["SUPER_ADMIN"]),
   siswaController.addSiswa,
+);
+
+userRouter.get(
+  "/api/students/waiting/pretest",
+  authMiddleware.verifyToken,
+  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR"]),
+  siswaController.getWaitingPretest,
+);
+
+userRouter.get(
+  "/api/students/waiting/halaqoh",
+  authMiddleware.verifyToken,
+  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR"]),
+  siswaController.getWaitingHalaqoh,
 );
 
 userRouter.get(
@@ -97,6 +117,13 @@ userRouter.delete(
   authMiddleware.verifyToken,
   authMiddleware.requireRole(["SUPER_ADMIN"]),
   siswaController.deleteSiswa,
+);
+
+userRouter.post(
+  "/api/siswa/bulk-delete",
+  authMiddleware.verifyToken,
+  authMiddleware.requireRole(["SUPER_ADMIN"]),
+  siswaController.deleteBulkSiswa,
 );
 
 // halaqoh
@@ -165,11 +192,13 @@ userRouter.get(
 userRouter.put(
   "/api/assessment/tahfidz/hafalan/setoran/:nis",
   authMiddleware.verifyToken,
+  authMiddleware.requireRole(["GURU", "DIREKTUR", "SUPER_ADMIN"]),
   hafalanController.editHafalan,
 );
 userRouter.delete(
   "/api/assessment/tahfidz/hafalan/setoran/:nis",
   authMiddleware.verifyToken,
+  authMiddleware.requireRole(["GURU", "DIREKTUR", "SUPER_ADMIN"]),
   hafalanController.deleteHafalan,
 );
 
@@ -191,11 +220,13 @@ userRouter.get(
 userRouter.put(
   "/api/assessment/tahfidz/murajaah/setoran/:nis",
   authMiddleware.verifyToken,
+  authMiddleware.requireRole(["GURU", "DIREKTUR", "SUPER_ADMIN"]),
   murajaahController.editMurajaah,
 );
 userRouter.delete(
   "/api/assessment/tahfidz/murajaah/setoran/:nis",
   authMiddleware.verifyToken,
+  authMiddleware.requireRole(["GURU", "DIREKTUR", "SUPER_ADMIN"]),
   murajaahController.deleteMurajaah,
 );
 
@@ -218,11 +249,13 @@ userRouter.get(
 userRouter.put(
   "/api/assessment/tahsin/setoran/:nis",
   authMiddleware.verifyToken,
+  authMiddleware.requireRole(["GURU", "DIREKTUR", "SUPER_ADMIN"]),
   tahsinController.editTahsin,
 );
 userRouter.delete(
   "/api/assessment/tahsin/setoran/:nis",
   authMiddleware.verifyToken,
+  authMiddleware.requireRole(["GURU", "DIREKTUR", "SUPER_ADMIN"]),
   tahsinController.deleteTahsin,
 );
 
@@ -323,7 +356,7 @@ userRouter.get(
 userRouter.post(
   "/api/pengajuan/:nis",
   authMiddleware.verifyToken,
-  authMiddleware.requireRole(["GURU"]),
+  authMiddleware.requireRole(["GURU", "DIREKTUR", "SUPER_ADMIN"]),
   pengajuanUjianTahsinController.addPengajuan,
 );
 

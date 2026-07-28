@@ -137,6 +137,11 @@ model Siswa {
   riwayatKelas   Riwayat_Kelas[]
   pengajuanUjian Pengajuan_Ujian[]
 
+  @@index([token])
+  @@index([halaqoh_tahsin_id])
+  @@index([halaqoh_tahfidz_id])
+  @@index([tahapan_tahsin])
+  @@index([nama])
   @@map("siswa")
 }
 
@@ -158,9 +163,11 @@ model Riwayat_Kelas {
   nama_kelas String
   status     String
 
-  siswa          Siswa          @relation(fields: [nis_siswa], references: [nis])
+  siswa          Siswa          @relation(fields: [nis_siswa], references: [nis], onDelete: Cascade)
   tahun_akademik Tahun_Akademik @relation(fields: [tahun_id], references: [id])
 
+  @@index([nis_siswa])
+  @@index([status])
   @@map("riwayat_kelas")
 }
 
@@ -171,7 +178,7 @@ model Halaqoh {
 
   userId String
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   siswaTahsin     Siswa[]            @relation("SiswaTahsin")
   siswaTahfidz    Siswa[]            @relation("SiswaTahfidz")
@@ -202,10 +209,13 @@ model Setoran_Hafalan {
   predikat          Predikat
   status_kelanjutan STATUS_KELANJUTAN
 
-  siswa   Siswa   @relation("LaporanHafalanBaru", fields: [nis_siswa], references: [nis])
+  siswa   Siswa    @relation("LaporanHafalanBaru", fields: [nis_siswa], references: [nis], onDelete: Cascade)
   halaqoh Halaqoh? @relation(fields: [halaqohId], references: [id], onDelete: SetNull)
-  surah   Surah   @relation(fields: [no_surah], references: [no_surah])
+  surah   Surah    @relation(fields: [no_surah], references: [no_surah])
 
+  @@index([nis_siswa])
+  @@index([timestamp])
+  @@index([halaqohId])
   @@map("setoran_hafalan")
 }
 
@@ -225,10 +235,13 @@ model Setoran_Murajaah {
   rata_rata Int
   predikat  Predikat
 
-  siswa   Siswa   @relation(fields: [nis_siswa], references: [nis])
+  siswa   Siswa    @relation(fields: [nis_siswa], references: [nis], onDelete: Cascade)
   halaqoh Halaqoh? @relation(fields: [halaqohId], references: [id], onDelete: SetNull)
-  surah   Surah   @relation(fields: [no_surah], references: [no_surah])
+  surah   Surah    @relation(fields: [no_surah], references: [no_surah])
 
+  @@index([nis_siswa])
+  @@index([timestamp])
+  @@index([halaqohId])
   @@map("setoran_murajaah")
 }
 
@@ -258,11 +271,15 @@ model Setoran_Tahsin {
   keterangan        String
   status_kelanjutan STATUS_KELANJUTAN
 
-  siswa        Siswa   @relation("LaporanTahsinBaru", fields: [nis_siswa], references: [nis])
+  siswa        Siswa    @relation("LaporanTahsinBaru", fields: [nis_siswa], references: [nis], onDelete: Cascade)
   halaqoh      Halaqoh? @relation(fields: [id_kelompok], references: [id], onDelete: SetNull)
-  hafalahSurah Surah?  @relation("HafalanSurah", fields: [hafalan_surah], references: [no_surah])
-  surah        Surah?  @relation("LaporanBacaan", fields: [no_surah], references: [no_surah])
+  hafalahSurah Surah?   @relation("HafalanSurah", fields: [hafalan_surah], references: [no_surah])
+  surah        Surah?   @relation("LaporanBacaan", fields: [no_surah], references: [no_surah])
 
+  @@index([nis_siswa])
+  @@index([timestamp])
+  @@index([id_kelompok])
+  @@index([status_kelanjutan])
   @@map("setoran_tahsin")
 }
 
@@ -279,7 +296,7 @@ model Ujian_Kenaikan {
   keterangan       String
   status_kelulusan STATUS_KELULUSAN
 
-  siswa   Siswa   @relation(fields: [nis_siswa], references: [nis])
+  siswa   Siswa   @relation(fields: [nis_siswa], references: [nis], onDelete: Cascade)
   halaqoh Halaqoh? @relation(fields: [id_kelompok], references: [id], onDelete: SetNull)
 
   @@map("ujian_kenaikan")
@@ -293,7 +310,7 @@ model Ujian_Pretest {
 
   tahapan Tahapan
 
-  siswa Siswa @relation(fields: [nis_siswa], references: [nis])
+  siswa Siswa @relation(fields: [nis_siswa], references: [nis], onDelete: Cascade)
 
   @@map("ujian_pretest")
 }
@@ -306,8 +323,10 @@ model Pengajuan_Ujian {
   kategori  Kategori
   tahapan   Tahapan
 
-  siswa Siswa @relation(fields: [nis_siswa], references: [nis])
-  guru  User  @relation(fields: [id_guru], references: [id])
+  siswa Siswa @relation(fields: [nis_siswa], references: [nis], onDelete: Cascade)
+  guru  User  @relation(fields: [id_guru], references: [id], onDelete: Cascade)
 
+  @@index([nis_siswa])
+  @@index([id_guru])
   @@map("pengajuan_ujian")
 }

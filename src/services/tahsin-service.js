@@ -25,7 +25,7 @@ const addTahsin = async (request) => {
     throw new ResponseError(404, "Halaqoh tidak ditemukan");
   }
 
-  const daftarNilaiLanjut = ["A+", "A", "B+", "B", "B-"];
+  const daftarNilaiLanjut = ["A+", "A", "B+", "B"];
 
   const statusKelanjutan = daftarNilaiLanjut.includes(tahsin.nilai)
     ? "LANJUT"

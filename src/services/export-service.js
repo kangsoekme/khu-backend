@@ -190,128 +190,107 @@ const computeCapaianSiswa = (siswa, periode = "semester") => {
   };
 };
 
-const buildKolektifSheet = (workbook, sheetName, dataSiswa, periode = "semester", bulan = "") => {
+const buildKolektifSheet = (workbook, sheetName, dataSiswa, periode = "semester", bulan = "", sheetType = "ALL") => {
   const sheet = workbook.addWorksheet(sheetName);
 
   // === BARIS 1: TOP HEADER ===
   sheet.mergeCells("A1:A3"); // Nama Siswa (rowspan 3)
   sheet.getCell("A1").value = "NAMA SISWA";
 
-  sheet.mergeCells("B1:H1"); // UMMI (colspan 7)
-  sheet.getCell("B1").value = "UMMI";
+  if (sheetType === "ALL" || sheetType === "TAHSIN") {
+    sheet.mergeCells("B1:H1"); // UMMI (colspan 7)
+    sheet.getCell("B1").value = "UMMI";
+    // UMMI Headers
+    sheet.mergeCells("B2:B3"); sheet.getCell("B2").value = "NAMA PENGAJAR";
+    sheet.mergeCells("C2:D2"); sheet.getCell("C2").value = periode === "bulanan" ? "AWAL BULAN" : "AWAL PERIODE";
+    sheet.mergeCells("E2:F2"); sheet.getCell("E2").value = periode === "bulanan" ? "AKHIR BULAN" : "CAPAIAN TERAKHIR";
+    sheet.mergeCells("G2:G3"); sheet.getCell("G2").value = "NILAI";
+    sheet.mergeCells("H2:H3"); sheet.getCell("H2").value = "DESKRIPSI";
+    sheet.getCell("C3").value = "JILID"; sheet.getCell("D3").value = "HAL";
+    sheet.getCell("E3").value = "JILID"; sheet.getCell("F3").value = "HAL";
+  }
 
-  sheet.mergeCells("I1:O1"); // TAHFIZH (colspan 7)
-  sheet.getCell("I1").value = "TAHFIZH";
+  if (sheetType === "ALL" || sheetType === "TAHFIDZ") {
+    const startCol = sheetType === "TAHFIDZ" ? "B" : "I";
+    const endCol = sheetType === "TAHFIDZ" ? "H" : "O";
+    sheet.mergeCells(`${startCol}1:${endCol}1`); // TAHFIZH
+    sheet.getCell(`${startCol}1`).value = "TAHFIZH";
+    // TAHFIZH Headers
+    const colB = sheetType === "TAHFIDZ" ? "B" : "I";
+    const colC = sheetType === "TAHFIDZ" ? "C" : "J";
+    const colD = sheetType === "TAHFIDZ" ? "D" : "K";
+    const colE = sheetType === "TAHFIDZ" ? "E" : "L";
+    const colF = sheetType === "TAHFIDZ" ? "F" : "M";
+    const colG = sheetType === "TAHFIDZ" ? "G" : "N";
+    const colH = sheetType === "TAHFIDZ" ? "H" : "O";
+    sheet.mergeCells(`${colB}2:${colB}3`); sheet.getCell(`${colB}2`).value = "NAMA PENGAJAR";
+    sheet.mergeCells(`${colC}2:${colD}2`); sheet.getCell(`${colC}2`).value = periode === "bulanan" ? "AWAL BULAN" : "AWAL PERIODE";
+    sheet.mergeCells(`${colE}2:${colF}2`); sheet.getCell(`${colE}2`).value = periode === "bulanan" ? "AKHIR BULAN" : "CAPAIAN TERAKHIR";
+    sheet.mergeCells(`${colG}2:${colG}3`); sheet.getCell(`${colG}2`).value = "NILAI";
+    sheet.mergeCells(`${colH}2:${colH}3`); sheet.getCell(`${colH}2`).value = "DESKRIPSI";
+    sheet.getCell(`${colC}3`).value = "SURAT"; sheet.getCell(`${colD}3`).value = "AYAT";
+    sheet.getCell(`${colE}3`).value = "SURAT"; sheet.getCell(`${colF}3`).value = "AYAT";
+  }
 
-  // === BARIS 2: SUB-HEADER 1 ===
-  // UMMI
-  sheet.mergeCells("B2:B3");
-  sheet.getCell("B2").value = "NAMA PENGAJAR";
-  sheet.mergeCells("C2:D2");
-  sheet.getCell("C2").value = periode === "bulanan" ? "AWAL BULAN" : "AWAL PERIODE";
-  sheet.mergeCells("E2:F2");
-  sheet.getCell("E2").value = periode === "bulanan" ? "AKHIR BULAN" : "CAPAIAN TERAKHIR";
-  sheet.mergeCells("G2:G3");
-  sheet.getCell("G2").value = "NILAI";
-  sheet.mergeCells("H2:H3");
-  sheet.getCell("H2").value = "DESKRIPSI";
-
-  // TAHFIZH
-  sheet.mergeCells("I2:I3");
-  sheet.getCell("I2").value = "NAMA PENGAJAR";
-  sheet.mergeCells("J2:K2");
-  sheet.getCell("J2").value = periode === "bulanan" ? "AWAL BULAN" : "AWAL PERIODE";
-  sheet.mergeCells("L2:M2");
-  sheet.getCell("L2").value = periode === "bulanan" ? "AKHIR BULAN" : "CAPAIAN TERAKHIR";
-  sheet.mergeCells("N2:N3");
-  sheet.getCell("N2").value = "NILAI";
-  sheet.mergeCells("O2:O3");
-  sheet.getCell("O2").value = "DESKRIPSI";
-
-  // === BARIS 3: SUB-HEADER 2 (Detail Jilid/Hal & Surat/Ayat) ===
-  sheet.getCell("C3").value = "JILID";
-  sheet.getCell("D3").value = "HAL";
-  sheet.getCell("E3").value = "JILID";
-  sheet.getCell("F3").value = "HAL";
-
-  sheet.getCell("J3").value = "SURAT";
-  sheet.getCell("K3").value = "AYAT";
-  sheet.getCell("L3").value = "SURAT";
-  sheet.getCell("M3").value = "AYAT";
-
-  // === STYLING HEADER (Warna & Border) ===
+  // Styling Header
+  const totalCols = sheetType === "ALL" ? 15 : 8;
   for (let r = 1; r <= 3; r++) {
-    for (let c = 1; c <= 15; c++) {
+    for (let c = 1; c <= totalCols; c++) {
       const cell = sheet.getRow(r).getCell(c);
       cell.font = { bold: true };
-      cell.alignment = {
-        horizontal: "center",
-        vertical: "middle",
-        wrapText: true,
-      };
-      cell.border = {
-        top: { style: "thin" },
-        left: { style: "thin" },
-        bottom: { style: "thin" },
-        right: { style: "thin" },
-      };
-
-      // Beri warna Kuning ke semua header
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFFFFF00" },
-      };
+      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } };
     }
   }
-  // Beri warna Hijau khusus untuk Header Utama UMMI & TAHFIZH (sesuai gambar)
-  sheet.getCell("B1").fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: "FF92D050" },
-  };
-  sheet.getCell("I1").fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: "FF92D050" },
-  };
+  
+  if (sheetType === "ALL" || sheetType === "TAHSIN") {
+    sheet.getCell("B1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF92D050" } };
+  }
+  if (sheetType === "ALL" || sheetType === "TAHFIDZ") {
+    const targetCell = sheetType === "TAHFIDZ" ? "B1" : "I1";
+    sheet.getCell(targetCell).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF92D050" } };
+  }
 
-  // === DATA SISWA (Mulai dari Baris 4) ===
+  // Data Siswa
   let currentRow = 4;
   dataSiswa.forEach((siswa) => {
     const c = computeCapaianSiswa(siswa, periode);
     sheet.getCell(`A${currentRow}`).value = siswa.nama;
 
-    // Data UMMI (B - H)
-    sheet.getCell(`B${currentRow}`).value =
-      siswa.halaqoh_tahsin?.user?.nama || "-";
-    sheet.getCell(`C${currentRow}`).value = c.awalJilidTahsin; // Awal Jilid
-    sheet.getCell(`D${currentRow}`).value = c.awalHalTahsin; // Awal Hal
-    sheet.getCell(`E${currentRow}`).value = c.capaianJilidTahsin; // Akhir Jilid
-    sheet.getCell(`F${currentRow}`).value = c.capaianHalTahsin; // Akhir Hal
-    sheet.getCell(`G${currentRow}`).value = c.nilaiTahsin; // Nilai
-    sheet.getCell(`H${currentRow}`).value = c.deskripsiTahsin; // Deskripsi
+    if (sheetType === "ALL" || sheetType === "TAHSIN") {
+      sheet.getCell(`B${currentRow}`).value = siswa.halaqoh_tahsin?.user?.nama || "-";
+      sheet.getCell(`C${currentRow}`).value = c.awalJilidTahsin; 
+      sheet.getCell(`D${currentRow}`).value = c.awalHalTahsin; 
+      sheet.getCell(`E${currentRow}`).value = c.capaianJilidTahsin; 
+      sheet.getCell(`F${currentRow}`).value = c.capaianHalTahsin; 
+      sheet.getCell(`G${currentRow}`).value = c.nilaiTahsin; 
+      sheet.getCell(`H${currentRow}`).value = c.deskripsiTahsin; 
+    }
 
-    // Data TAHFIZH (I - O)
-    sheet.getCell(`I${currentRow}`).value =
-      siswa.halaqoh_tahfidz?.user?.nama || "-";
-    sheet.getCell(`J${currentRow}`).value = c.awalSurahTahfidz; // Awal Surat
-    sheet.getCell(`K${currentRow}`).value = c.awalAyatTahfidz; // Awal Ayat
-    sheet.getCell(`L${currentRow}`).value = c.capaianSurahTahfidz; // Akhir Surat
-    sheet.getCell(`M${currentRow}`).value = c.capaianAyatTahfidz; // Akhir Ayat
-    sheet.getCell(`N${currentRow}`).value = c.nilaiTahfidz; // Nilai
-    sheet.getCell(`O${currentRow}`).value = c.deskripsiTahfidz; // Deskripsi
+    if (sheetType === "ALL" || sheetType === "TAHFIDZ") {
+      const colB = sheetType === "TAHFIDZ" ? "B" : "I";
+      const colC = sheetType === "TAHFIDZ" ? "C" : "J";
+      const colD = sheetType === "TAHFIDZ" ? "D" : "K";
+      const colE = sheetType === "TAHFIDZ" ? "E" : "L";
+      const colF = sheetType === "TAHFIDZ" ? "F" : "M";
+      const colG = sheetType === "TAHFIDZ" ? "G" : "N";
+      const colH = sheetType === "TAHFIDZ" ? "H" : "O";
+
+      sheet.getCell(`${colB}${currentRow}`).value = siswa.halaqoh_tahfidz?.user?.nama || "-";
+      sheet.getCell(`${colC}${currentRow}`).value = c.awalSurahTahfidz; 
+      sheet.getCell(`${colD}${currentRow}`).value = c.awalAyatTahfidz; 
+      sheet.getCell(`${colE}${currentRow}`).value = c.capaianSurahTahfidz; 
+      sheet.getCell(`${colF}${currentRow}`).value = c.capaianAyatTahfidz; 
+      sheet.getCell(`${colG}${currentRow}`).value = c.nilaiTahfidz; 
+      sheet.getCell(`${colH}${currentRow}`).value = c.deskripsiTahfidz; 
+    }
 
     // Border & Alignment Data
-    for (let c = 1; c <= 15; c++) {
-      const cell = sheet.getRow(currentRow).getCell(c);
-      cell.border = {
-        top: { style: "thin" },
-        left: { style: "thin" },
-        bottom: { style: "thin" },
-        right: { style: "thin" },
-      };
-      if (c !== 1 && c !== 8 && c !== 15)
+    for (let col = 1; col <= totalCols; col++) {
+      const cell = sheet.getRow(currentRow).getCell(col);
+      cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+      if (col !== 1 && col !== 8 && col !== 15)
         cell.alignment = { horizontal: "center", vertical: "middle" };
       else cell.alignment = { vertical: "middle" };
     }
@@ -320,20 +299,23 @@ const buildKolektifSheet = (workbook, sheetName, dataSiswa, periode = "semester"
 
   // Lebar Kolom Presisi
   sheet.getColumn("A").width = 25; // Nama
-  sheet.getColumn("B").width = 18; // Pengajar
-  sheet.getColumn("C").width = 8; // Jilid
-  sheet.getColumn("D").width = 8; // Hal
-  sheet.getColumn("E").width = 8; // Jilid
-  sheet.getColumn("F").width = 8; // Hal
-  sheet.getColumn("G").width = 8; // Nilai
-  sheet.getColumn("H").width = 25; // Deskripsi
-  sheet.getColumn("I").width = 18; // Pengajar
-  sheet.getColumn("J").width = 12; // Surat
-  sheet.getColumn("K").width = 8; // Ayat
-  sheet.getColumn("L").width = 12; // Surat
-  sheet.getColumn("M").width = 8; // Ayat
-  sheet.getColumn("N").width = 8; // Nilai
-  sheet.getColumn("O").width = 25; // Deskripsi
+  if (sheetType === "ALL" || sheetType === "TAHSIN") {
+    sheet.getColumn("B").width = 18; sheet.getColumn("C").width = 8; sheet.getColumn("D").width = 8;
+    sheet.getColumn("E").width = 8; sheet.getColumn("F").width = 8; sheet.getColumn("G").width = 8;
+    sheet.getColumn("H").width = 25; 
+  }
+  if (sheetType === "ALL" || sheetType === "TAHFIDZ") {
+    const cB = sheetType === "TAHFIDZ" ? "B" : "I";
+    const cC = sheetType === "TAHFIDZ" ? "C" : "J";
+    const cD = sheetType === "TAHFIDZ" ? "D" : "K";
+    const cE = sheetType === "TAHFIDZ" ? "E" : "L";
+    const cF = sheetType === "TAHFIDZ" ? "F" : "M";
+    const cG = sheetType === "TAHFIDZ" ? "G" : "N";
+    const cH = sheetType === "TAHFIDZ" ? "H" : "O";
+    sheet.getColumn(cB).width = 18; sheet.getColumn(cC).width = 12; sheet.getColumn(cD).width = 8;
+    sheet.getColumn(cE).width = 12; sheet.getColumn(cF).width = 8; sheet.getColumn(cG).width = 8;
+    sheet.getColumn(cH).width = 25; 
+  }
 };
 
 const buildIndividualSheet = (workbook, dataSiswa) => {
@@ -587,21 +569,32 @@ const generateJamaiReport = async (kategori, periode = "semester", bulan = "") =
 
     buildIndividualSheet(workbook, allSiswa);
   } else {
-    const groupedByHalaqoh = {};
+    const groupedByTahsin = {};
+    const groupedByTahfidz = {};
     allSiswa.forEach((siswa) => {
-      const namaHalaqoh =
-        siswa.halaqoh_tahsin?.nama ||
-        siswa.halaqoh_tahfidz?.nama ||
-        "Tanpa Halaqoh";
-      if (!groupedByHalaqoh[namaHalaqoh]) groupedByHalaqoh[namaHalaqoh] = [];
-      groupedByHalaqoh[namaHalaqoh].push(siswa);
+      if (siswa.halaqoh_tahsin?.nama) {
+        if (!groupedByTahsin[siswa.halaqoh_tahsin.nama]) groupedByTahsin[siswa.halaqoh_tahsin.nama] = [];
+        groupedByTahsin[siswa.halaqoh_tahsin.nama].push(siswa);
+      }
+      if (siswa.halaqoh_tahfidz?.nama) {
+        if (!groupedByTahfidz[siswa.halaqoh_tahfidz.nama]) groupedByTahfidz[siswa.halaqoh_tahfidz.nama] = [];
+        groupedByTahfidz[siswa.halaqoh_tahfidz.nama].push(siswa);
+      }
     });
 
-    for (const [namaHalaqoh, siswaList] of Object.entries(groupedByHalaqoh)) {
-      const validSheetName = namaHalaqoh
-        .substring(0, 30)
-        .replace(/[*?:\/\[\]]/g, "_");
-      buildKolektifSheet(workbook, validSheetName, siswaList, periode, bulan);
+    for (const [nama, list] of Object.entries(groupedByTahsin)) {
+      let validSheetName = nama.substring(0, 30).replace(/[*?:\/\[\]]/g, "_");
+      if (workbook.worksheets.find(s => s.name === validSheetName)) {
+        validSheetName = validSheetName.substring(0, 20) + " (Tahsin)";
+      }
+      buildKolektifSheet(workbook, validSheetName, list, periode, bulan, "TAHSIN");
+    }
+    for (const [nama, list] of Object.entries(groupedByTahfidz)) {
+      let validSheetName = nama.substring(0, 30).replace(/[*?:\/\[\]]/g, "_");
+      if (workbook.worksheets.find(s => s.name === validSheetName)) {
+        validSheetName = validSheetName.substring(0, 20) + " (Tahfidz)";
+      }
+      buildKolektifSheet(workbook, validSheetName, list, periode, bulan, "TAHFIDZ");
     }
   }
 
@@ -925,7 +918,7 @@ const generateWordLaporanUmmi = async () => {
     jml_sertifikat: String(totalGuru || "-"),
     jml_blm_sertifikat: "0",
     jml_santri: String(siswaList.length || "0"),
-    tempat_tanggal: `Surabaya, ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}`,
+    tempat_tanggal: `Surabaya, ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" })}`,
     kepala_sekolah: "Kepala Sekolah SDI Khoiru Ummah",
   };
 
@@ -1118,7 +1111,7 @@ const exportMunaqosyah = async () => {
 
   pengajuanList.forEach((p, idx) => {
     const s = p.siswa;
-    const dateStr = p.timestamp ? new Date(p.timestamp).toLocaleDateString("id-ID") : "-";
+    const dateStr = p.timestamp ? new Date(p.timestamp).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" }) : "-";
     const kls = s?.riwayatKelas?.[0]?.nama_kelas || "-";
     const setoran = s?.setoranTahsin?.[0];
     let terakhir = s?.tahapan_tahsin ? formatTahapan(s.tahapan_tahsin) : "-";
