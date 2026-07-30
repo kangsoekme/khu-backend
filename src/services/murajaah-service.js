@@ -111,9 +111,33 @@ const editMurajaah = async (id, request) => {
   });
   if (!setoran) throw new ResponseError(404, "Data murajaah tidak ditemukan");
 
+  const { nis_siswa, halaqohId, no_surah, ayat_awal, ayat_akhir, jumlah_salah, nilai_bacaan } = request;
+
+  let nilaiHafalan = 95 - jumlah_salah * 10;
+  if (nilaiHafalan < 60) nilaiHafalan = 60;
+
+  const nilaiRataRata = Math.round((nilaiHafalan + nilai_bacaan) / 2);
+
+  let predikatSiswa = "DHAIF";
+  if (nilaiRataRata >= 86) predikatSiswa = "MUMTAZ";
+  else if (nilaiRataRata >= 76) predikatSiswa = "JAYYID_JIDDAN";
+  else if (nilaiRataRata >= 66) predikatSiswa = "JAYYID";
+  else predikatSiswa = "DHAIF";
+
   return await prismaClient.setoran_Murajaah.update({
     where: { id },
-    data: request,
+    data: {
+      nis_siswa,
+      halaqohId,
+      no_surah,
+      ayat_awal,
+      ayat_akhir,
+      jumlah_salah,
+      nilai_bacaan,
+      nilai_hafalan: nilaiHafalan,
+      rata_rata: nilaiRataRata,
+      predikat: predikatSiswa,
+    },
   });
 };
 
