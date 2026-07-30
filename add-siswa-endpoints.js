@@ -47,11 +47,11 @@ const selectBlock = {
       }
     };
 
-const newMethods = \
+const newMethods = `
 const getWaitingPretest = async () => {
   const data = await prismaClient.siswa.findMany({
     where: { tahapan_tahsin: null },
-    select: \,
+    select: ${JSON.stringify(selectBlock)},
     orderBy: { nama: 'asc' },
   });
   return { data };
@@ -74,12 +74,12 @@ const getWaitingHalaqoh = async (kategori) => {
 
   const data = await prismaClient.siswa.findMany({
     where,
-    select: \,
+    select: ${JSON.stringify(selectBlock)},
     orderBy: { nama: 'asc' },
   });
   return { data };
 };
-\;
+`;
 
 code = code.replace('export default {', newMethods + '\nexport default {');
 code = code.replace('export default {', 'export default {\n  getWaitingPretest,\n  getWaitingHalaqoh,');

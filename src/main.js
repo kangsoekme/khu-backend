@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { web } from "./application/web.js";
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
   web.listen(PORT, () => {

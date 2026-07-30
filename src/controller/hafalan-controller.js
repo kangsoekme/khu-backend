@@ -36,7 +36,7 @@ const getRiwayatHafalan = async (req, res, next) => {
 
 const editHafalan = async (req, res, next) => {
   try {
-    const id = req.params.id || req.params.nis;
+    const id = req.params.id;
     const result = await setoranHafalanService.editHafalan(id, req.body);
     res.status(200).json({
       status: "success",
@@ -49,7 +49,7 @@ const editHafalan = async (req, res, next) => {
 };
 const deleteHafalan = async (req, res, next) => {
   try {
-    const id = req.params.id || req.params.nis;
+    const id = req.params.id;
     await setoranHafalanService.deleteHafalan(id);
     res
       .status(200)

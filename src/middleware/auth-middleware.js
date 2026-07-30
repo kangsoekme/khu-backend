@@ -1,43 +1,47 @@
 import { prismaClient } from "../application/database.js";
 
 const verifyToken = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).json({
-      status: "error",
-      message: "Access denied, token not found",
-    });
-  }
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({
+        status: "error",
+        message: "Access denied, token not found",
+      });
+    }
 
-  const token = authHeader.split(" ")[1] || authHeader;
+    const token = authHeader.split(" ")[1] || authHeader;
 
-  let user = await prismaClient.user.findFirst({
-    where: {
-      token: token,
-    },
-  });
-
-  if (!user) {
-    const wali = await prismaClient.siswa.findFirst({
+    let user = await prismaClient.user.findFirst({
       where: {
         token: token,
       },
     });
 
-    if (wali) {
-      user = { ...wali, role: "WALI" };
+    if (!user) {
+      const wali = await prismaClient.siswa.findFirst({
+        where: {
+          token: token,
+        },
+      });
+
+      if (wali) {
+        user = { ...wali, role: "WALI" };
+      }
     }
-  }
 
-  if (!user) {
-    return res.status(401).json({
-      status: "error",
-      message: "Unauthorized",
-    });
-  }
+    if (!user) {
+      return res.status(401).json({
+        status: "error",
+        message: "Unauthorized",
+      });
+    }
 
-  req.user = user;
-  next();
+    req.user = user;
+    next();
+  } catch (error) {
+    next(error);
+  }
 };
 
 const requireRole = (allowedRoles) => {

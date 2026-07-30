@@ -36,7 +36,7 @@ const getRiwayatMurajaah = async (req, res, next) => {
 
 const editMurajaah = async (req, res, next) => {
   try {
-    const id = req.params.id || req.params.nis;
+    const id = req.params.id;
     const result = await murajaahService.editMurajaah(id, req.body);
     res.status(200).json({
       status: "success",
@@ -49,7 +49,7 @@ const editMurajaah = async (req, res, next) => {
 };
 const deleteMurajaah = async (req, res, next) => {
   try {
-    const id = req.params.id || req.params.nis;
+    const id = req.params.id;
     await murajaahService.deleteMurajaah(id);
     res
       .status(200)

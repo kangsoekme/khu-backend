@@ -48,9 +48,22 @@ const transisiSemester = async (req, res, next) => {
   }
 };
 
+const activateTahunAkademik = async (req, res, next) => {
+  try {
+    const result = await tahunAkademikService.activateTahunAkademik(req.params.id);
+    res.status(200).json({
+      status: "success",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   getAllTahunAkademik,
   getActiveTahunAkademik,
   createTahunAkademik,
   transisiSemester,
+  activateTahunAkademik,
 };

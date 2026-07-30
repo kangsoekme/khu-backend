@@ -190,13 +190,13 @@ userRouter.get(
 );
 
 userRouter.put(
-  "/api/assessment/tahfidz/hafalan/setoran/:nis",
+  "/api/assessment/tahfidz/hafalan/setoran/:id",
   authMiddleware.verifyToken,
   authMiddleware.requireRole(["GURU", "DIREKTUR", "SUPER_ADMIN"]),
   hafalanController.editHafalan,
 );
 userRouter.delete(
-  "/api/assessment/tahfidz/hafalan/setoran/:nis",
+  "/api/assessment/tahfidz/hafalan/setoran/:id",
   authMiddleware.verifyToken,
   authMiddleware.requireRole(["GURU", "DIREKTUR", "SUPER_ADMIN"]),
   hafalanController.deleteHafalan,
@@ -218,13 +218,13 @@ userRouter.get(
 );
 
 userRouter.put(
-  "/api/assessment/tahfidz/murajaah/setoran/:nis",
+  "/api/assessment/tahfidz/murajaah/setoran/:id",
   authMiddleware.verifyToken,
   authMiddleware.requireRole(["GURU", "DIREKTUR", "SUPER_ADMIN"]),
   murajaahController.editMurajaah,
 );
 userRouter.delete(
-  "/api/assessment/tahfidz/murajaah/setoran/:nis",
+  "/api/assessment/tahfidz/murajaah/setoran/:id",
   authMiddleware.verifyToken,
   authMiddleware.requireRole(["GURU", "DIREKTUR", "SUPER_ADMIN"]),
   murajaahController.deleteMurajaah,
@@ -247,13 +247,13 @@ userRouter.get(
 );
 
 userRouter.put(
-  "/api/assessment/tahsin/setoran/:nis",
+  "/api/assessment/tahsin/setoran/:id",
   authMiddleware.verifyToken,
   authMiddleware.requireRole(["GURU", "DIREKTUR", "SUPER_ADMIN"]),
   tahsinController.editTahsin,
 );
 userRouter.delete(
-  "/api/assessment/tahsin/setoran/:nis",
+  "/api/assessment/tahsin/setoran/:id",
   authMiddleware.verifyToken,
   authMiddleware.requireRole(["GURU", "DIREKTUR", "SUPER_ADMIN"]),
   tahsinController.deleteTahsin,
@@ -280,7 +280,7 @@ userRouter.post(
 
 // database Al-Quran
 
-userRouter.get("/api/all-surah", surahController.getAllSurah);
+userRouter.get("/api/all-surah", authMiddleware.verifyToken, surahController.getAllSurah);
 
 // dashboard
 
@@ -361,7 +361,7 @@ userRouter.post(
 );
 
 userRouter.get(
-  "/api/pengajuan/",
+  "/api/pengajuan",
   authMiddleware.verifyToken,
   authMiddleware.requireRole(["DIREKTUR"]),
   pengajuanUjianTahsinController.getDaftarPengajuan,
@@ -445,6 +445,13 @@ userRouter.post(
   authMiddleware.verifyToken,
   authMiddleware.requireRole(["SUPER_ADMIN"]),
   tahunAkademikController.transisiSemester,
+);
+
+userRouter.patch(
+  "/api/tahun-akademik/:id/activate",
+  authMiddleware.verifyToken,
+  authMiddleware.requireRole(["SUPER_ADMIN"]),
+  tahunAkademikController.activateTahunAkademik,
 );
 
 export { userRouter };

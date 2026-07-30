@@ -102,6 +102,7 @@ const transisiSemester = async (request) => {
     });
 
     // 4. Buatkan riwayat kelas baru untuk semester/tahun baru
+    const droppedNisList = [];
     if (riwayatAktif.length > 0) {
       const dataRiwayatBaru = riwayatAktif.map((r) => {
         let newClassName = r.nama_kelas;
@@ -110,6 +111,7 @@ const transisiSemester = async (request) => {
         }
         
         if (newClassName === "LULUS") {
+          droppedNisList.push(r.nis_siswa);
           return null;
         }
 
@@ -127,6 +129,15 @@ const transisiSemester = async (request) => {
           skipDuplicates: true,
         });
       }
+    }
+
+    // 4.5. Hapus permanen (drop) siswa kelas 6
+    if (droppedNisList.length > 0) {
+      await tx.siswa.deleteMany({
+        where: {
+          nis: { in: droppedNisList }
+        }
+      });
     }
 
     // 5. Reset halaqoh siswa menjadi null agar siap di-plotting ulang
@@ -148,9 +159,30 @@ const transisiSemester = async (request) => {
   });
 };
 
+const activateTahunAkademik = async (id) => {
+  const tahunAkademik = await prismaClient.tahun_Akademik.findUnique({
+    where: { id: parseInt(id) }
+  });
+
+  if (!tahunAkademik) {
+    throw new ResponseError(404, "Tahun akademik tidak ditemukan");
+  }
+
+  return await prismaClient.$transaction(async (tx) => {
+    await tx.tahun_Akademik.updateMany({
+      data: { is_active: false },
+    });
+    return await tx.tahun_Akademik.update({
+      where: { id: parseInt(id) },
+      data: { is_active: true },
+    });
+  });
+};
+
 export default {
   getAllTahunAkademik,
   getActiveTahunAkademik,
   createTahunAkademik,
   transisiSemester,
+  activateTahunAkademik,
 };

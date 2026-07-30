@@ -52,7 +52,7 @@ const getRiwayatTahsin = async (req, res, next) => {
 
 const editTahsin = async (req, res, next) => {
   try {
-    const id = req.params.id || req.params.nis;
+    const id = req.params.id;
     const result = await tahsinService.editTahsin(id, req.body);
     res.status(200).json({
       status: "success",
@@ -65,7 +65,7 @@ const editTahsin = async (req, res, next) => {
 };
 const deleteTahsin = async (req, res, next) => {
   try {
-    const id = req.params.id || req.params.nis;
+    const id = req.params.id;
     await tahsinService.deleteTahsin(id);
     res
       .status(200)

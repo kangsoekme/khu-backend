@@ -8,7 +8,7 @@ const addUjianKenaikanTahsin = async (req, res, next) => {
     res.status(200).json({
       status: "success",
       message: "Hasil ujian berhasil disimpan",
-      data: "result",
+      data: result,
     });
   } catch (error) {
     next(error);

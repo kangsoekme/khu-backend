@@ -388,7 +388,7 @@ const getSiswa = async (nis) => {
   });
 
   if (!siswa) {
-    throw new ResponseError(404, "Data siswa sudah terdaftar");
+    throw new ResponseError(404, "Data siswa tidak ditemukan");
   }
 
   return siswa;

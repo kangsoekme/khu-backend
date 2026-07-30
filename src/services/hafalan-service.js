@@ -80,6 +80,7 @@ const getRiwayatHafalan = async (nis) => {
           surah: {
             select: {
               nama_surah: true,
+              jumlah_ayat: true,
             },
           },
         },
@@ -90,7 +91,15 @@ const getRiwayatHafalan = async (nis) => {
   if (!siswa) {
     throw new ResponseError(404, "Data siswa tidak ditemukkan");
   }
-  const totalHafalan = siswa.setoranHafalan.length;
+  const totalSetoran = siswa.setoranHafalan.length;
+  
+  const completedSurahs = new Set();
+  siswa.setoranHafalan.forEach((item) => {
+    if (item.surah && item.ayat_akhir >= item.surah.jumlah_ayat) {
+      completedSurahs.add(item.no_surah);
+    }
+  });
+  const totalHafalan = completedSurahs.size;
 
   const totalKelancaran = siswa.setoranHafalan.reduce(
     (sum, item) => sum + item.nilai_hafalan,
@@ -98,7 +107,7 @@ const getRiwayatHafalan = async (nis) => {
   );
 
   const rataRataKelancaran =
-    totalHafalan > 0 ? Math.round(totalKelancaran / totalHafalan) : 0;
+    totalSetoran > 0 ? Math.round(totalKelancaran / totalSetoran) : 0;
 
   return {
     nis: siswa.nis,
