@@ -24,6 +24,9 @@ services:
       # Koneksi DB mengarah ke container 'postgres-db'
       DATABASE_URL: "postgresql://admin:belajaralquran@postgres-db:5432/khu_belajar_quran?schema=public"
       PORT: 5000
+      # SEC-4: WAJIB diisi URL frontend produksi agar CORS mengizinkannya.
+      # Bisa beberapa origin dipisah koma. Contoh: FRONTEND_URL=https://khu.example.com
+      FRONTEND_URL: "${FRONTEND_URL:-}"
     depends_on:
       - postgres-db
 

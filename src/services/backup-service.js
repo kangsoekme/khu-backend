@@ -2,8 +2,39 @@ import { prismaClient } from "../application/database.js";
 import { ResponseError } from "../error/response-error.js";
 
 const getDatabaseBackup = async () => {
-  const users = await prismaClient.user.findMany();
-  const siswa = await prismaClient.siswa.findMany();
+  // SEC-5: eksklusi field sensitif (password & token) dari backup
+  // untuk mencegah kebocoran kredensial jika berkas backup bocor.
+  const users = await prismaClient.user.findMany({
+    select: {
+      id: true,
+      nama: true,
+      email: true,
+      no_telp: true,
+      role: true,
+      jenis_kelamin: true,
+      is_sertifikasi: true,
+      profile_photo: true,
+      // password & token sengaja TIDAK diikutsertakan
+    },
+  });
+  const siswa = await prismaClient.siswa.findMany({
+    select: {
+      nis: true,
+      nama: true,
+      jenis_kelamin: true,
+      tanggal_lahir: true,
+      alamat: true,
+      nama_wali: true,
+      no_telp: true,
+      profile_photo: true,
+      updatedAt: true,
+      createdAt: true,
+      halaqoh_tahsin_id: true,
+      halaqoh_tahfidz_id: true,
+      tahapan_tahsin: true,
+      // token sengaja TIDAK diikutsertakan
+    },
+  });
   const halaqoh = await prismaClient.halaqoh.findMany();
   const surah = await prismaClient.surah.findMany();
   const bab_jilid = await prismaClient.bab_Jilid.findMany();
@@ -18,6 +49,7 @@ const getDatabaseBackup = async () => {
 
   const backupData = {
     timestamp: new Date().toISOString(),
+    note: "Backup tidak menyertakan password dan token (field sensitif).",
     data: {
       users,
       siswa,

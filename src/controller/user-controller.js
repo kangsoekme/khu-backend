@@ -21,8 +21,8 @@ const editUser = async (req, res, next) => {
 
 const getUsers = async (req, res, next) => {
   try {
-    const { page, limit, search } = req.query;
-    const result = await userService.getUsers(page, limit, search);
+    const { page, limit, search, role } = req.query;
+    const result = await userService.getUsers(page, limit, search, role);
     res.status(200).json({
       status: "success",
       data: result.data,

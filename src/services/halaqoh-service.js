@@ -98,8 +98,9 @@ const addHalaqoh = async (request) => {
   });
 };
 
-const getAllHalaqoh = async () => {
+const getAllHalaqoh = async (filter = {}) => {
   return prismaClient.halaqoh.findMany({
+    where: filter,
     include: {
       user: {
         select: { id: true, nama: true, no_telp: true },

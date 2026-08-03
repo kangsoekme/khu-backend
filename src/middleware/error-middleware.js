@@ -7,16 +7,21 @@ const errorMiddleware = async (err, req, res, next) => {
     return;
   }
 
+  // BE-8: standardisasi format respons error agar konsisten.
+  // Selalu sertakan { status: "error", message }.
   if (err instanceof ResponseError) {
     res
       .status(err.status)
       .json({
+        status: "error",
         message: err.message,
       })
       .end();
   } else {
     res.status(500).json({
-      message: err.message,
+      status: "error",
+      // Sembunyikan detail error internal pada produksi
+      message: "Terjadi kesalahan pada server",
     });
   }
 };

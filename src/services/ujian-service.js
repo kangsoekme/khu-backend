@@ -1,7 +1,11 @@
 import { prismaClient } from "../application/database.js";
 import { ResponseError } from "../error/response-error.js";
+import { validate } from "../validation/validation.js";
+import { addUjianKenaikanValidation } from "../validation/pengajuan-ujian-validation.js";
 
 const addUjianKenaikanTahsin = async (request) => {
+  // BE-3: validasi enum sebelum kontak Prisma
+  const data = validate(addUjianKenaikanValidation, request);
   const {
     nis_siswa,
     id_kelompok,
@@ -9,7 +13,7 @@ const addUjianKenaikanTahsin = async (request) => {
     nilai,
     keterangan,
     status_kelulusan,
-  } = request;
+  } = data;
 
   const siswa = await prismaClient.siswa.findUnique({
     where: { nis: nis_siswa },

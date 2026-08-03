@@ -6,10 +6,12 @@ const exportJamai = async (req, res, next) => {
     const periode = req.query.periode || "semester";
     const bulan = req.query.bulan || "";
 
+    // GURU-2: teruskan user agar export di-scope ke halaqoh guru
     const excelBuffer = await exportService.generateJamaiReport(
       kategori,
       periode,
-      bulan
+      bulan,
+      req.user,
     );
 
     const tanggal = new Date().toISOString().split("T")[0];

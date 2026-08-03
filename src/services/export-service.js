@@ -76,6 +76,8 @@ const gradeMap = {
 
 const formatTahapan = (val) => {
   if (!val || val === "-") return "-";
+  // BE-5: key enum harus sesuai prisma/schema.prisma (ALQURAN, GHARIB),
+  // bukan AL_QURAN/GHORIB yang menyebabkan label tampil mentah.
   const map = {
     JILID_1: "Jilid 1",
     JILID_2: "Jilid 2",
@@ -83,10 +85,10 @@ const formatTahapan = (val) => {
     JILID_4: "Jilid 4",
     JILID_5: "Jilid 5",
     JILID_6: "Jilid 6",
-    AL_QURAN: "Al-Qur'an",
-    GHORIB: "Ghorib",
+    TILAWAH_JUZ_1_5: "Tilawah Juz 1-5",
+    ALQURAN: "Al-Qur'an",
+    GHARIB: "Gharib",
     TAJWID: "Tajwid",
-    TAHFIDZ: "Tahfidz",
     MUNAQOSYAH: "Munaqosyah",
   };
   return map[val] || val.replace(/_/g, " ");
@@ -507,11 +509,29 @@ const buildIndividualSheet = (workbook, dataSiswa) => {
   sheet.getColumn("I").width = 35; // Deskripsi
 };
 
-const generateJamaiReport = async (kategori, periode = "semester", bulan = "") => {
+const generateJamaiReport = async (kategori, periode = "semester", bulan = "", user = null) => {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "Sistem Tahsin Tahfidz";
 
+  // GURU-2: Scope siswa hanya ke halaqoh milik guru yang login.
+  // Ambil daftar halaqoh milik guru, lalu filter siswa yang terdaftar di halaqoh tersebut.
+  let whereClause = {};
+  if (user && user.role === "GURU") {
+    const halaqohMilikGuru = await prismaClient.halaqoh.findMany({
+      where: { userId: user.id },
+      select: { id: true },
+    });
+    const idHalaqohGuru = halaqohMilikGuru.map((h) => h.id);
+    whereClause = {
+      OR: [
+        { halaqoh_tahsin_id: { in: idHalaqohGuru } },
+        { halaqoh_tahfidz_id: { in: idHalaqohGuru } },
+      ],
+    };
+  }
+
   const allSiswa = await prismaClient.siswa.findMany({
+    where: whereClause,
     include: {
       riwayatKelas: {
         where: { status: "AKTIF" },

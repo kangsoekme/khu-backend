@@ -1,4 +1,5 @@
 import halaqohService from "../services/halaqoh-service.js";
+import ownershipCheck from "../middleware/ownership-check.js";
 
 const addHalaqoh = async (req, res, next) => {
   try {
@@ -23,7 +24,10 @@ const addHalaqoh = async (req, res, next) => {
 
 const getAllHalaqoh = async (req, res, next) => {
   try {
-    const result = await halaqohService.getAllHalaqoh();
+    // GURU hanya melihat halaqoh miliknya; admin & direktur melihat semua
+    const filter =
+      req.user.role === "GURU" ? { userId: req.user.id } : {};
+    const result = await halaqohService.getAllHalaqoh(filter);
     const formattedData = result.map((halaqoh) => ({
       id: halaqoh.id,
       nama_halaqoh: halaqoh.nama,
@@ -47,6 +51,8 @@ const getAllHalaqoh = async (req, res, next) => {
 const getHalaqoh = async (req, res, next) => {
   try {
     const halaqohId = req.params.id;
+    // GURU hanya bisa melihat detail halaqoh miliknya
+    await ownershipCheck.assertGuruOwnsHalaqoh(req.user, halaqohId);
     const result = await halaqohService.getHalaqoh(halaqohId);
 
     const formattedData = {

@@ -151,12 +151,14 @@ userRouter.get(
 userRouter.get(
   "/api/halaqoh",
   authMiddleware.verifyToken,
+  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR", "GURU"]),
   halaqohController.getAllHalaqoh,
 );
 
 userRouter.get(
   "/api/halaqoh/:id",
   authMiddleware.verifyToken,
+  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR", "GURU"]),
   halaqohController.getHalaqoh,
 );
 
@@ -421,15 +423,19 @@ userRouter.get(
 );
 
 // manajemen tahun akademik & transisi kenaikan kelas/semester
+// WALI-3: batasi akses tahun-akademik hanya untuk SUPER_ADMIN & DIREKTUR
+// (wali tidak membutuhkannya; mencegah kebocoran info periode akademik internal)
 userRouter.get(
   "/api/tahun-akademik",
   authMiddleware.verifyToken,
+  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR"]),
   tahunAkademikController.getAllTahunAkademik,
 );
 
 userRouter.get(
   "/api/tahun-akademik/active",
   authMiddleware.verifyToken,
+  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR"]),
   tahunAkademikController.getActiveTahunAkademik,
 );
 

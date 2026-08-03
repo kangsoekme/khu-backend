@@ -11,12 +11,8 @@ import crypto from "crypto";
 import { v4 as uuid } from "uuid";
 
 const addUser = async (request) => {
-  // untuk uuid
-
-  // validasi skema input
   const user = validate(userValidation, request);
 
-  // validasi user sudah ada apa belum
   const countUser = await prismaClient.user.count({
     where: {
       email: user.email,
@@ -111,16 +107,19 @@ const editUser = async (userId, request) => {
   });
 };
 
-const getUsers = async (page = 1, limit = 10, search = "") => {
+const getUsers = async (page = 1, limit = 10, search = "", role = "") => {
   const skip = (parseInt(page) - 1) * parseInt(limit);
-  const where = search
-    ? {
-        OR: [
-          { nama: { contains: search, mode: "insensitive" } },
-          { email: { contains: search, mode: "insensitive" } },
-        ],
-      }
-    : {};
+  // FE-1: dukung filter role di sisi server agar konsisten dengan pagination
+  const where = {};
+  if (search) {
+    where.OR = [
+      { nama: { contains: search, mode: "insensitive" } },
+      { email: { contains: search, mode: "insensitive" } },
+    ];
+  }
+  if (role) {
+    where.role = role;
+  }
 
   const totalData = await prismaClient.user.count({ where });
   const totalPages = Math.ceil(totalData / parseInt(limit));

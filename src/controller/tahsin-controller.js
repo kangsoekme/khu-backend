@@ -1,8 +1,12 @@
 import tahsinService from "../services/tahsin-service.js";
+import ownershipCheck from "../middleware/ownership-check.js";
 
 const addTahsin = async (req, res, next) => {
   try {
     req.body.nis_siswa = req.params.nis;
+    // GURU-1: verifikasi kepemilikan siswa & halaqoh sebelum menambah setoran
+    await ownershipCheck.assertGuruOwnsSiswa(req.user, req.body.nis_siswa);
+    await ownershipCheck.assertGuruOwnsHalaqoh(req.user, req.body.halaqohId);
     const result = await tahsinService.addTahsin(req.body);
 
     res.status(200).json({
@@ -53,6 +57,10 @@ const getRiwayatTahsin = async (req, res, next) => {
 const editTahsin = async (req, res, next) => {
   try {
     const id = req.params.id;
+    // GURU-1: verifikasi kepemilikan setoran sebelum mengubah
+    await ownershipCheck.assertGuruOwnsSetoran(
+      req.user, id, "setoran_Tahsin", "id_kelompok",
+    );
     const result = await tahsinService.editTahsin(id, req.body);
     res.status(200).json({
       status: "success",
@@ -66,6 +74,10 @@ const editTahsin = async (req, res, next) => {
 const deleteTahsin = async (req, res, next) => {
   try {
     const id = req.params.id;
+    // GURU-1: verifikasi kepemilikan setoran sebelum menghapus
+    await ownershipCheck.assertGuruOwnsSetoran(
+      req.user, id, "setoran_Tahsin", "id_kelompok",
+    );
     await tahsinService.deleteTahsin(id);
     res
       .status(200)

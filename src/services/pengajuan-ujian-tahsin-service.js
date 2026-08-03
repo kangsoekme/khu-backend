@@ -1,8 +1,12 @@
 import { prismaClient } from "../application/database.js";
 import { ResponseError } from "../error/response-error.js";
+import { validate } from "../validation/validation.js";
+import { addPengajuanValidation } from "../validation/pengajuan-ujian-validation.js";
 
 const addPengajuan = async (request) => {
-  const { nis_siswa, id_guru, kategori, tahapan } = request;
+  // BE-3: validasi enum sebelum kontak Prisma
+  const data = validate(addPengajuanValidation, request);
+  const { nis_siswa, id_guru, kategori, tahapan } = data;
 
   const exiting = await prismaClient.pengajuan_Ujian.findFirst({
     where: { nis_siswa, kategori },

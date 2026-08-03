@@ -45,6 +45,9 @@ const tahsinValidation = Joi.object({
 const pretestValidation = Joi.object({
   nis_siswa: Joi.string().required(),
   keterangan: Joi.string().allow("").optional(),
+  // DIR-1: terima field nilai opsional (jika dikirim client) walau tidak disimpan,
+  // untuk menghindari error 400 yang memblokir alur pretest.
+  nilai: Joi.string().allow("", null).optional(),
   tahapan: Joi.string()
     .valid(
       "JILID_1",
@@ -60,6 +63,6 @@ const pretestValidation = Joi.object({
       "MUNAQOSYAH",
     )
     .required(),
-});
+}).unknown(true);
 
 export { tahsinValidation, pretestValidation };

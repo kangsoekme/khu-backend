@@ -160,8 +160,9 @@ const transisiSemester = async (request) => {
 };
 
 const activateTahunAkademik = async (id) => {
+  // BE-1: id adalah UUID (String), bukan integer. parseInt(id) menghasilkan NaN → HTTP 500.
   const tahunAkademik = await prismaClient.tahun_Akademik.findUnique({
-    where: { id: parseInt(id) }
+    where: { id: id },
   });
 
   if (!tahunAkademik) {
@@ -173,7 +174,7 @@ const activateTahunAkademik = async (id) => {
       data: { is_active: false },
     });
     return await tx.tahun_Akademik.update({
-      where: { id: parseInt(id) },
+      where: { id: id },
       data: { is_active: true },
     });
   });

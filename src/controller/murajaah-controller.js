@@ -1,8 +1,12 @@
 import murajaahService from "../services/murajaah-service.js";
+import ownershipCheck from "../middleware/ownership-check.js";
 
 const addMurajaah = async (req, res, next) => {
   try {
     req.body.nis_siswa = req.params.nis;
+    // GURU-1: verifikasi kepemilikan siswa & halaqoh sebelum menambah setoran
+    await ownershipCheck.assertGuruOwnsSiswa(req.user, req.body.nis_siswa);
+    await ownershipCheck.assertGuruOwnsHalaqoh(req.user, req.body.halaqohId);
     const result = await murajaahService.addMurajaah(req.body);
     res.status(200).json({
       status: "success",
@@ -37,6 +41,10 @@ const getRiwayatMurajaah = async (req, res, next) => {
 const editMurajaah = async (req, res, next) => {
   try {
     const id = req.params.id;
+    // GURU-1: verifikasi kepemilikan setoran sebelum mengubah
+    await ownershipCheck.assertGuruOwnsSetoran(
+      req.user, id, "setoran_Murajaah", "halaqohId",
+    );
     const result = await murajaahService.editMurajaah(id, req.body);
     res.status(200).json({
       status: "success",
@@ -50,6 +58,10 @@ const editMurajaah = async (req, res, next) => {
 const deleteMurajaah = async (req, res, next) => {
   try {
     const id = req.params.id;
+    // GURU-1: verifikasi kepemilikan setoran sebelum menghapus
+    await ownershipCheck.assertGuruOwnsSetoran(
+      req.user, id, "setoran_Murajaah", "halaqohId",
+    );
     await murajaahService.deleteMurajaah(id);
     res
       .status(200)

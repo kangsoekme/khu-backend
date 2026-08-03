@@ -1,8 +1,12 @@
 import setoranHafalanService from "../services/hafalan-service.js";
+import ownershipCheck from "../middleware/ownership-check.js";
 
 const addHafalan = async (req, res, next) => {
   try {
     req.body.nis_siswa = req.params.nis;
+    // GURU-1: verifikasi kepemilikan siswa & halaqoh sebelum menambah setoran
+    await ownershipCheck.assertGuruOwnsSiswa(req.user, req.body.nis_siswa);
+    await ownershipCheck.assertGuruOwnsHalaqoh(req.user, req.body.halaqohId);
     const result = await setoranHafalanService.addHafalan(req.body);
     res.status(200).json({
       status: "success",
@@ -37,6 +41,10 @@ const getRiwayatHafalan = async (req, res, next) => {
 const editHafalan = async (req, res, next) => {
   try {
     const id = req.params.id;
+    // GURU-1: verifikasi kepemilikan setoran sebelum mengubah
+    await ownershipCheck.assertGuruOwnsSetoran(
+      req.user, id, "setoran_Hafalan", "halaqohId",
+    );
     const result = await setoranHafalanService.editHafalan(id, req.body);
     res.status(200).json({
       status: "success",
@@ -50,6 +58,10 @@ const editHafalan = async (req, res, next) => {
 const deleteHafalan = async (req, res, next) => {
   try {
     const id = req.params.id;
+    // GURU-1: verifikasi kepemilikan setoran sebelum menghapus
+    await ownershipCheck.assertGuruOwnsSetoran(
+      req.user, id, "setoran_Hafalan", "halaqohId",
+    );
     await setoranHafalanService.deleteHafalan(id);
     res
       .status(200)
