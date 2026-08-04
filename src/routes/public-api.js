@@ -26,4 +26,15 @@ publicRouter.post(
   userController.loginWali,
 );
 
+// Health check untuk platform deploy (Render/Railway/Docker).
+// Dipanggil berkala oleh Render untuk memastikan service "hidup".
+// Tidak butuh auth, tidak akses DB supaya ringan & cepat.
+publicRouter.get("/api/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    service: "khu-backend",
+    timestamp: new Date().toISOString(),
+  });
+});
+
 export { publicRouter };

@@ -1,0 +1,13 @@
+# Jangan masukkan ini ke Docker image (yang akan di-deploy ke Render)
+node_modules
+npm-debug.log
+.env
+.env.local
+.git
+.gitignore
+generated
+postman
+
+# File upload lokal (akan dibuat ulang di server)
+uploads/*
+!uploads/.gitkeep
