@@ -21,6 +21,9 @@ const allowedOrigins = [
   "http://localhost:5174", // Vite dev server (port cadangan)
   "http://localhost:5000", // backend serve frontend (jika ada)
   "http://127.0.0.1:5173",
+  // Frontend produksi (Vercel). Selain ini, semua *.vercel.app juga
+  // diizinkan via allowedOriginPatterns di bawah (untuk preview deployment).
+  "https://khu-frontend.vercel.app",
   process.env.FRONTEND_URL, // origin produksi via env (WAJIB di production)
   // dukung beberapa origin produksi dipisah koma: FRONTEND_URL="https://a.com,https://b.com"
   ...(process.env.FRONTEND_URL
@@ -28,15 +31,27 @@ const allowedOrigins = [
     : []),
 ].filter((v, i, arr) => v && arr.indexOf(v) === i); // dedupe + hapus falsy
 
+// Pattern origin yang diizinkan (regex). Dipakai untuk platform yang generate
+// banyak subdomain dinamis seperti Vercel (preview deployment).
+// Vercel format: https://<project>.vercel.app, https://<project>-<hash>-<scope>.vercel.app
+const allowedOriginPatterns = [
+  /^https:\/\/[\w-]+\.vercel\.app$/, // semua subdomain *.vercel.app
+];
+
+const isOriginAllowed = (origin) => {
+  if (!origin) return true; // request non-browser (curl, Postman, server-to-server)
+  if (allowedOrigins.includes(origin)) return true; // exact match
+  return allowedOriginPatterns.some((pattern) => pattern.test(origin)); // regex
+};
+
 web.use(
   cors({
     origin(origin, callback) {
-      // Izinkan request tanpa origin (curl, Postman, server-to-server)
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Origin tidak diizinkan oleh CORS"));
-      }
+      // FIX: jangan throw Error (menyebabkan 500 + crash pada preflight OPTIONS).
+      // Cukup kembalikan false — cors akan mengirim response tanpa header
+      // Access-Control-Allow-Origin, sehingga browser memblokirnya dengan pesan
+      // CORS yang jelas (bukan 500 server error yang membingungkan).
+      callback(null, isOriginAllowed(origin));
     },
     credentials: true,
   }),
