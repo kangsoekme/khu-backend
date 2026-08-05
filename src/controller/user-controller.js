@@ -76,11 +76,10 @@ const loginWali = async (req, res, next) => {
 
 const logout = async (req, res, next) => {
   try {
-    if (req.user.role === "WALI") {
-      await userService.logoutWali(req.user.nis);
-    } else {
-      await userService.logout(req.user.email);
-    }
+    // Logout seragam: hapus 1 session (device ini saja) berdasarkan token.
+    // Tidak lagi membedakan user vs wali — service.logout(token) hapus baris
+    // session spesifik, session device lain tetap aktif (multi-device).
+    await userService.logout(req.token);
     res.status(200).json({
       status: "success",
       data: "OK",

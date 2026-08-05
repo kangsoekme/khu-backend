@@ -75,6 +75,19 @@ const restoreDatabaseBackup = async (backupData) => {
   if (!data) {
     throw new ResponseError(400, "Format file backup JSON tidak valid!");
   }
+
+  // Kompatibilitas backup lama: field `token` dulu disimpan di tabel users/siswa,
+  // sekarang sudah dipindah ke tabel Session. Backup file lama mungkin masih
+  // mengandung field `token` → createMany akan error "unknown field".
+  // Solusi: hapus field token dari setiap baris sebelum insert.
+  const stripLegacyToken = (rows) =>
+    Array.isArray(rows)
+      ? rows.map(({ token, ...rest }) => rest)
+      : rows;
+
+  const users = stripLegacyToken(data.users);
+  const siswa = stripLegacyToken(data.siswa);
+
   // Gunakan transaction agar jika 1 tabel gagal, semua otomatis dibatalkan (rollback)
   await prismaClient.$transaction(async (tx) => {
     // 💡 1. URUTAN DELETE (Anak dulu, baru Siswa, baru Halaqoh, baru User)
@@ -91,8 +104,8 @@ const restoreDatabaseBackup = async (backupData) => {
     await tx.halaqoh.deleteMany(); // 👈 Baru halaqoh
     await tx.user.deleteMany();
     // 💡 2. URUTAN INSERT (User -> Tahun Akademik -> Halaqoh -> Siswa -> Transaksi Anak)
-    if (data.users?.length) {
-      await tx.user.createMany({ data: data.users, skipDuplicates: true });
+    if (users?.length) {
+      await tx.user.createMany({ data: users, skipDuplicates: true });
     }
     if (data.tahun_akademik?.length) {
       await tx.tahun_Akademik.createMany({
@@ -103,8 +116,8 @@ const restoreDatabaseBackup = async (backupData) => {
     if (data.halaqoh?.length) {
       await tx.halaqoh.createMany({ data: data.halaqoh, skipDuplicates: true }); // 👈 Halaqoh duluan
     }
-    if (data.siswa?.length) {
-      await tx.siswa.createMany({ data: data.siswa, skipDuplicates: true }); // 👈 Baru siswa
+    if (siswa?.length) {
+      await tx.siswa.createMany({ data: siswa, skipDuplicates: true }); // 👈 Baru siswa
     }
     if (data.riwayat_kelas?.length) {
       await tx.riwayat_Kelas.createMany({

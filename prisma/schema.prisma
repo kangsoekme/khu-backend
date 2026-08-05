@@ -101,8 +101,9 @@ model User {
   halaqoh        Halaqoh[]
   updatedAt      DateTime          @default(now())
   createdAt      DateTime          @default(now())
-  token          String?
+  // token dipindah ke model Session (multi-device support)
   pengajuanUjian Pengajuan_Ujian[]
+  sessions       Session[]
 
   @@map("users")
 }
@@ -116,7 +117,7 @@ model Siswa {
   nama_wali     String
   no_telp       String
   profile_photo String?
-  token         String?       @db.Text
+  // token dipindah ke model Session (multi-device support)
   updatedAt     DateTime      @default(now())
   createdAt     DateTime      @default(now())
 
@@ -136,8 +137,8 @@ model Siswa {
 
   riwayatKelas   Riwayat_Kelas[]
   pengajuanUjian Pengajuan_Ujian[]
+  sessions       Session[]
 
-  @@index([token])
   @@index([halaqoh_tahsin_id])
   @@index([halaqoh_tahfidz_id])
   @@index([tahapan_tahsin])
@@ -329,4 +330,26 @@ model Pengajuan_Ujian {
   @@index([nis_siswa])
   @@index([id_guru])
   @@map("pengajuan_ujian")
+}
+
+// Session terpisah untuk mendukung login multi-device.
+// 1 user/siswa → banyak session (1 per device/browser). Login menambah baris
+// baru (tidak menimpa), logout menghapus 1 baris saja. Token disimpan di sini,
+// BUKAN di kolom User/Siswa (model lama).
+model Session {
+  id         String    @id @default(uuid())
+  token      String    @unique @db.Text
+  user_id    String?
+  nis_siswa  String?
+  user       User?     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  siswa      Siswa?    @relation(fields: [nis_siswa], references: [nis], onDelete: Cascade)
+  created_at DateTime  @default(now())
+  // 12 jam, mengikuti session_expires_at di frontend (LoginPage/WaliLogin).
+  expires_at DateTime?
+  user_agent String?   @db.Text
+  ip_address String?
+
+  @@index([user_id])
+  @@index([nis_siswa])
+  @@map("session")
 }

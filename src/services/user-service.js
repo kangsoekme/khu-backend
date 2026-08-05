@@ -181,8 +181,11 @@ const login = async (request) => {
       email: loginRequest.email,
     },
     select: {
+      id: true,
       email: true,
       password: true,
+      role: true,
+      nama: true,
     },
   });
 
@@ -200,40 +203,23 @@ const login = async (request) => {
   }
 
   const token = uuid();
-
-  return prismaClient.user.update({
+  // Multi-device: buat baris session BARU (tidak menimpa session device lain).
+  const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000); // 12 jam
+  await prismaClient.session.create({
     data: {
       token: token,
+      user_id: user.id,
+      expires_at: expiresAt,
     },
-    where: {
-      email: user.email,
-    },
-    select: { token: true, role: true, nama: true },
   });
+
+  return { token: token, role: user.role, nama: user.nama };
 };
 
-const logout = async (email) => {
-  const user = await prismaClient.user.findUnique({
-    where: {
-      email: email,
-    },
-  });
-
-  if (!user) {
-    throw new ResponseError(404, "User not found");
-  }
-
-  return prismaClient.user.update({
-    where: {
-      email: email,
-    },
-    data: {
-      token: null,
-    },
-    select: {
-      email: true,
-    },
-  });
+const logout = async (token) => {
+  // Hapus SATU session (device ini saja). Session device lain tetap aktif.
+  if (!token) return;
+  await prismaClient.session.deleteMany({ where: { token: token } });
 };
 
 const deleteUser = async (userId) => {
@@ -261,6 +247,7 @@ const loginWali = async (request) => {
 
   const siswa = await prismaClient.siswa.findUnique({
     where: { nis: nis },
+    select: { nis: true, nama: true, tanggal_lahir: true },
   });
 
   if (!siswa) {
@@ -278,27 +265,22 @@ const loginWali = async (request) => {
   }
 
   const token = uuid();
-
-  const updatedSiswa = await prismaClient.siswa.update({
-    data: { token: token },
-    where: { nis: nis },
-    select: { token: true, nis: true, nama: true },
+  // Multi-device: buat baris session BARU untuk wali.
+  const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000); // 12 jam
+  await prismaClient.session.create({
+    data: {
+      token: token,
+      nis_siswa: siswa.nis,
+      expires_at: expiresAt,
+    },
   });
 
   return {
-    token: updatedSiswa.token,
+    token: token,
     role: "WALI",
-    nama: updatedSiswa.nama,
-    nis: updatedSiswa.nis,
+    nama: siswa.nama,
+    nis: siswa.nis,
   };
-};
-
-const logoutWali = async (nis) => {
-  return prismaClient.siswa.update({
-    where: { nis: nis },
-    data: { token: null },
-    select: { nis: true },
-  });
 };
 
 const deleteBulkUsers = async (userIds) => {
@@ -318,7 +300,6 @@ export default {
   getUsers,
   getUser,
   logout,
-  logoutWali,
   deleteUser,
   deleteBulkUsers,
 };
