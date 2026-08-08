@@ -298,6 +298,12 @@ const getAllSiswa = async (page = 1, limit = 10, search = "") => {
         select: {
           tahapan: true,
           keterangan: true,
+          jilid: true,
+          halaman: true,
+          no_surah: true,
+          ayat_awal: true,
+          ayat_akhir: true,
+          materi: true,
         },
       },
     },
