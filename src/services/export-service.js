@@ -748,11 +748,12 @@ const exportHalaqohDistribution = async (kategori = "TAHSIN") => {
         const kls = s.riwayatKelas?.[0]?.nama_kelas || "-";
         if (kategori === "TAHSIN") {
           const setoran = s.setoranTahsin?.[0];
-          const jilid = formatTahapan(setoran?.tahapan || s.tahapan_tahsin || "-");
-          const hal =
-            setoran?.halaman || setoran?.bab
-              ? `Hal ${setoran?.halaman || setoran?.bab}`
-              : "-";
+          const currentTahap = s.tahapan_tahsin || s.ujianPretest?.[0]?.tahapan || setoran?.tahapan || "-";
+          const jilid = formatTahapan(currentTahap);
+          let hal = "-";
+          if (setoran && (!setoran.tahapan || setoran.tahapan === currentTahap)) {
+            hal = setoran.halaman || setoran.bab ? `Hal ${setoran.halaman || setoran.bab}` : "-";
+          }
           rowData = [i, s.nama, kls, jilid, hal, ""];
         } else {
           const hafalan = s.setoranHafalan?.[0];
@@ -890,37 +891,42 @@ const generateWordLaporanUmmi = async () => {
       prefix = "tkb";
     }
 
-    const jilidStr = String(
-      s.setoranTahsin?.[0]?.tahapan || s.tahapan_tahsin || "",
-    ).toLowerCase();
+    const currentTahap = String(
+      s.tahapan_tahsin ||
+      s.ujianPretest?.[0]?.tahapan ||
+      s.setoranTahsin?.[0]?.tahapan ||
+      ""
+    ).toUpperCase();
+
     let col = "lain";
-    if (jilidStr.includes("dewasa") || jilidStr.includes("dws")) {
-      col = "dws";
-    } else if (jilidStr.includes("pra") || jilidStr.includes("tk")) {
-      col = "pratk";
-    } else if (jilidStr.includes("1") || jilidStr === "jilid 1") {
+    if (currentTahap.includes("JILID_1") || currentTahap === "JILID 1") {
       col = "j1";
-    } else if (jilidStr.includes("2") || jilidStr === "jilid 2") {
+    } else if (currentTahap.includes("JILID_2") || currentTahap === "JILID 2") {
       col = "j2";
-    } else if (jilidStr.includes("3") || jilidStr === "jilid 3") {
+    } else if (currentTahap.includes("JILID_3") || currentTahap === "JILID 3") {
       col = "j3";
-    } else if (jilidStr.includes("4") || jilidStr === "jilid 4") {
+    } else if (currentTahap.includes("JILID_4") || currentTahap === "JILID 4") {
       col = "j4";
-    } else if (jilidStr.includes("5") || jilidStr === "jilid 5") {
+    } else if (currentTahap.includes("JILID_5") || currentTahap === "JILID 5") {
       col = "j5";
-    } else if (jilidStr.includes("6") || jilidStr === "jilid 6") {
+    } else if (currentTahap.includes("JILID_6") || currentTahap === "JILID 6") {
       col = "j6";
-    } else if (jilidStr.includes("ghorib") || jilidStr.includes("gharib")) {
+    } else if (currentTahap.includes("GHARIB") || currentTahap.includes("GHORIB")) {
       col = "ghorib";
-    } else if (jilidStr.includes("tajwid")) {
+    } else if (currentTahap.includes("TAJWID")) {
       col = "tajwid";
     } else if (
-      jilidStr.includes("qur") ||
-      jilidStr.includes("tartil") ||
-      jilidStr.includes("juz") ||
-      jilidStr.includes("tahfidz")
+      currentTahap.includes("TILAWAH") ||
+      currentTahap.includes("ALQURAN") ||
+      currentTahap.includes("MUNAQOSYAH") ||
+      currentTahap.includes("QURAN") ||
+      currentTahap.includes("JUZ")
     ) {
       col = "quran";
+    } else if (currentTahap.includes("DWS") || currentTahap.includes("DEWASA")) {
+      col = "dws";
+    } else if (currentTahap.includes("PRA") || currentTahap.includes("TK")) {
+      col = "pratk";
     }
 
     stats[`${prefix}_jml`]++;
@@ -1003,14 +1009,16 @@ const generateWordRapor = async (nis) => {
   if (tahsinList.length > 0) {
     const firstT = tahsinList[0];
     const lastT = tahsinList[tahsinList.length - 1];
-    awalJilidTahsin = formatTahapan(firstT.tahapan || "-");
+    awalJilidTahsin = formatTahapan(firstT.tahapan || siswa.tahapan_tahsin || "-");
     awalHalTahsin =
       firstT.halaman || firstT.bab
         ? `Hal ${firstT.halaman || firstT.bab}`
         : "-";
-    capaianJilidTahsin = formatTahapan(lastT.tahapan || "-");
+    capaianJilidTahsin = formatTahapan(siswa.tahapan_tahsin || lastT.tahapan || "-");
     capaianHalTahsin =
-      lastT.halaman || lastT.bab ? `Hal ${lastT.halaman || lastT.bab}` : "-";
+      (lastT.tahapan === (siswa.tahapan_tahsin || lastT.tahapan) && (lastT.halaman || lastT.bab))
+        ? `Hal ${lastT.halaman || lastT.bab}`
+        : "-";
 
     const validNilai = tahsinList
       .map((t) => parseFloat(t.nilai))
