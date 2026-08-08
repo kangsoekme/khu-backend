@@ -77,7 +77,7 @@ const addPretest = async (request) => {
     throw new ResponseError(404, "Data siswa tidak ditemukkan");
   }
 
-  const [hasilPretest, updateSiswa] = await prismaClient.$transaction([
+  const [hasilPretest] = await prismaClient.$transaction([
     prismaClient.ujian_Pretest.create({
       data: {
         nis_siswa: pretest.nis_siswa,
@@ -97,6 +97,25 @@ const addPretest = async (request) => {
             nama: true,
           },
         },
+      },
+    }),
+
+    // Auto-buat setoran pertama bertag is_placement=true sebagai titik awal bacaan
+    prismaClient.setoran_Tahsin.create({
+      data: {
+        nis_siswa: pretest.nis_siswa,
+        id_kelompok: siswa.halaqoh_tahsin_id || null,
+        tahapan: pretest.tahapan,
+        jilid: pretest.jilid ? Number(pretest.jilid) : null,
+        bab: pretest.halaman ? Number(pretest.halaman) : null,
+        no_surah: pretest.no_surah ? Number(pretest.no_surah) : null,
+        ayat_awal: pretest.ayat_awal ? Number(pretest.ayat_awal) : null,
+        ayat_akhir: pretest.ayat_akhir ? Number(pretest.ayat_akhir) : null,
+        materi: pretest.materi || null,
+        nilai: "A+",
+        keterangan: "Titik awal placement pretest",
+        status_kelanjutan: "LANJUT",
+        is_placement: true,
       },
     }),
 
@@ -151,9 +170,11 @@ const getRiwayatTahsin = async (nis) => {
     throw new ResponseError(404, "Data siswa tidak ditemukan");
   }
 
-  const totalPertemuan = siswa.setoranTahsin.length;
+  // Pisahkan setoran aktual (bukan placement) untuk statistik
+  const setoranAktual = siswa.setoranTahsin.filter((s) => !s.is_placement);
 
-  const nilaiAkhir = totalPertemuan > 0 ? siswa.setoranTahsin[0].nilai : "-";
+  const totalPertemuan = setoranAktual.length;
+  const nilaiAkhir = totalPertemuan > 0 ? setoranAktual[0].nilai : "-";
 
   const daftarNilai = {
     "A+": 95,
@@ -168,7 +189,7 @@ const getRiwayatTahsin = async (nis) => {
   };
 
   let totalAngka = 0;
-  siswa.setoranTahsin.forEach(
+  setoranAktual.forEach(
     (setoran) => (totalAngka += daftarNilai[setoran.nilai] || 0),
   );
 
@@ -188,10 +209,12 @@ const getRiwayatTahsin = async (nis) => {
     else rataRataHuruf = "D";
   }
 
+  // History mencakup semua setoran (termasuk placement) agar urutan +1 bekerja
   const historyMapping = siswa.setoranTahsin.map((setoran) => ({
     id: setoran.id,
     timestamp: setoran.timestamp,
     tahapan: setoran.tahapan,
+    is_placement: setoran.is_placement,
     hafalan_surah: {
       surah: setoran.hafalahSurah ? setoran.hafalahSurah.nama_surah : null,
       ayat_awal: setoran.hafalan_ayat_awal,

@@ -265,6 +265,9 @@ model Setoran_Tahsin {
   keterangan        String
   status_kelanjutan STATUS_KELANJUTAN
 
+  // Penanda: true jika record ini dibuat otomatis saat pretest (bukan pertemuan nyata)
+  is_placement Boolean @default(false)
+
   siswa        Siswa    @relation("LaporanTahsinBaru", fields: [nis_siswa], references: [nis], onDelete: Cascade)
   halaqoh      Halaqoh? @relation(fields: [id_kelompok], references: [id], onDelete: SetNull)
   hafalahSurah Surah?   @relation("HafalanSurah", fields: [hafalan_surah], references: [no_surah])
