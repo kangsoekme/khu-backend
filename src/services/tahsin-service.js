@@ -77,11 +77,23 @@ const addPretest = async (request) => {
     throw new ResponseError(404, "Data siswa tidak ditemukkan");
   }
 
+  let detailKet = pretest.keterangan || "";
+  if (pretest.jilid && pretest.halaman) {
+    const info = `[Placement: Jilid ${pretest.jilid} Hal. ${pretest.halaman}]`;
+    detailKet = detailKet ? `${info} ${detailKet}` : info;
+  } else if (pretest.no_surah) {
+    const info = `[Placement: Surah ke-${pretest.no_surah} ${pretest.ayat_akhir ? `Ayat ${pretest.ayat_akhir}` : ""}]`;
+    detailKet = detailKet ? `${info} ${detailKet}` : info;
+  } else if (pretest.materi) {
+    const info = `[Placement: ${pretest.materi} Hal. ${pretest.halaman || 1}]`;
+    detailKet = detailKet ? `${info} ${detailKet}` : info;
+  }
+
   const [hasilPretest, updateSiswa] = await prismaClient.$transaction([
     prismaClient.ujian_Pretest.create({
       data: {
         nis_siswa: pretest.nis_siswa,
-        keterangan: pretest.keterangan,
+        keterangan: detailKet,
         tahapan: pretest.tahapan,
       },
       include: {
