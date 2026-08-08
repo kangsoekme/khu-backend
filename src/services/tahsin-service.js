@@ -130,6 +130,20 @@ const getRiwayatTahsin = async (nis) => {
           },
         },
       },
+      ujianPretest: {
+        orderBy: { id: "desc" },
+        take: 1,
+        select: {
+          tahapan: true,
+          keterangan: true,
+          jilid: true,
+          halaman: true,
+          no_surah: true,
+          ayat_awal: true,
+          ayat_akhir: true,
+          materi: true,
+        },
+      },
     },
   });
 
@@ -204,6 +218,7 @@ const getRiwayatTahsin = async (nis) => {
     nis: siswa.nis,
     nama: siswa.nama,
     history: historyMapping,
+    pretest: siswa.ujianPretest?.[0] || null,
     summary: {
       total_pertemuan: totalPertemuan,
       nilai_terakhir: nilaiAkhir,
