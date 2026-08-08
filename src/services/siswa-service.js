@@ -388,6 +388,12 @@ const getSiswa = async (nis) => {
         select: {
           tahapan: true,
           keterangan: true,
+          jilid: true,
+          halaman: true,
+          no_surah: true,
+          ayat_awal: true,
+          ayat_akhir: true,
+          materi: true,
         },
       },
     },
@@ -468,7 +474,7 @@ const getWaitingPretest = async () => {
       ujianPretest: {
         orderBy: { id: "desc" },
         take: 1,
-        select: { tahapan: true, keterangan: true },
+        select: { tahapan: true, keterangan: true, jilid: true, halaman: true, no_surah: true, ayat_awal: true, ayat_akhir: true, materi: true },
       },
     },
     orderBy: { nama: "asc" },
@@ -536,7 +542,7 @@ const getWaitingHalaqoh = async (kategori) => {
       ujianPretest: {
         orderBy: { id: "desc" },
         take: 1,
-        select: { tahapan: true, keterangan: true },
+        select: { tahapan: true, keterangan: true, jilid: true, halaman: true, no_surah: true, ayat_awal: true, ayat_akhir: true, materi: true },
       },
     },
     orderBy: { nama: "asc" },
