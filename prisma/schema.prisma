@@ -78,14 +78,6 @@ model Surah {
   @@map("surah")
 }
 
-model Bab_Jilid {
-  nomor    Int    @id
-  jilid    Int
-  nama_bab String
-
-  @@map("bab_jilid")
-}
-
 model User {
   id            String  @id @default(uuid())
   nama          String
