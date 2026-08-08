@@ -44,9 +44,7 @@ const tahsinValidation = Joi.object({
 
 const pretestValidation = Joi.object({
   nis_siswa: Joi.string().required(),
-  keterangan: Joi.string().allow("").optional(),
-  // DIR-1: terima field nilai opsional (jika dikirim client) walau tidak disimpan,
-  // untuk menghindari error 400 yang memblokir alur pretest.
+  keterangan: Joi.string().allow("", null).optional(),
   nilai: Joi.string().allow("", null).optional(),
   tahapan: Joi.string()
     .valid(
@@ -63,6 +61,12 @@ const pretestValidation = Joi.object({
       "MUNAQOSYAH",
     )
     .required(),
+  jilid: Joi.number().allow(null).optional(),
+  halaman: Joi.number().allow(null).optional(),
+  no_surah: Joi.number().allow(null).optional(),
+  ayat_awal: Joi.number().allow(null).optional(),
+  ayat_akhir: Joi.number().allow(null).optional(),
+  materi: Joi.string().allow("", null).optional(),
 }).unknown(true);
 
 export { tahsinValidation, pretestValidation };

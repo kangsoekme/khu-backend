@@ -74,6 +74,7 @@ model Surah {
   setoranMurajaahs     Setoran_Murajaah[]
   setoranTahsins       Setoran_Tahsin[]   @relation("HafalanSurah")
   setoranHafalanTahsin Setoran_Tahsin[]   @relation("LaporanBacaan")
+  ujianPretests        Ujian_Pretest[]
 
   @@map("surah")
 }
@@ -299,11 +300,19 @@ model Ujian_Pretest {
   id        String @id @default(uuid())
   nis_siswa String
 
-  keterangan String
+  keterangan String?
 
   tahapan Tahapan
 
-  siswa Siswa @relation(fields: [nis_siswa], references: [nis], onDelete: Cascade)
+  jilid      Int?
+  halaman    Int?
+  no_surah   Int?
+  ayat_awal  Int?
+  ayat_akhir Int?
+  materi     String?
+
+  siswa Siswa  @relation(fields: [nis_siswa], references: [nis], onDelete: Cascade)
+  surah Surah? @relation(fields: [no_surah], references: [no_surah])
 
   @@map("ujian_pretest")
 }
