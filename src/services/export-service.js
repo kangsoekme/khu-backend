@@ -124,9 +124,21 @@ const computeCapaianSiswa = (siswa, periode = "semester") => {
     const firstT = tahsinList[0];
     const lastT = tahsinList[tahsinList.length - 1];
     awalJilidTahsin = formatTahapan(firstT.tahapan || siswa.tahapan_tahsin || "-");
-    awalHalTahsin = firstT.halaman || firstT.bab || "1";
     capaianJilidTahsin = formatTahapan(lastT.tahapan || siswa.tahapan_tahsin || "-");
-    capaianHalTahsin = lastT.halaman || lastT.bab || "-";
+
+    const formatHalTahsin = (setoran) => {
+      if (!setoran) return "-";
+      let parts = [];
+      if (setoran.halaman || setoran.bab) parts.push(`Hal ${setoran.halaman || setoran.bab}`);
+      if (setoran.surah?.nama_surah || setoran.no_surah) {
+        const surah = setoran.surah?.nama_surah || `Surah ${setoran.no_surah}`;
+        parts.push(`${surah} Ay ${setoran.ayat_akhir || "-"}`);
+      }
+      return parts.length > 0 ? parts.join(" | ") : "-";
+    };
+
+    awalHalTahsin = formatHalTahsin(firstT);
+    capaianHalTahsin = formatHalTahsin(lastT);
 
     const validNilai = tahsinList
       .map((t) => gradeMap[t.nilai] || parseFloat(t.nilai))
@@ -543,7 +555,7 @@ const generateJamaiReport = async (kategori, periode = "semester", bulan = "", u
       halaqoh_tahfidz: {
         include: { user: true },
       },
-      setoranTahsin: { orderBy: { timestamp: "asc" } },
+      setoranTahsin: { orderBy: { timestamp: "asc" }, include: { surah: true } },
       setoranHafalan: {
         orderBy: { timestamp: "asc" },
         include: { surah: true },
@@ -634,7 +646,7 @@ const generateIndividualReport = async (nis) => {
       },
       halaqoh_tahsin: { include: { user: true } },
       halaqoh_tahfidz: { include: { user: true } },
-      setoranTahsin: { orderBy: { timestamp: "asc" } },
+      setoranTahsin: { orderBy: { timestamp: "asc" }, include: { surah: true } },
       setoranHafalan: {
         orderBy: { timestamp: "asc" },
         include: { surah: true },
@@ -807,6 +819,7 @@ const generateWordLaporanUmmi = async () => {
     include: {
       riwayatKelas: { where: { status: "AKTIF" } },
       setoranTahsin: { orderBy: { timestamp: "desc" }, take: 1 },
+      ujianPretest: { orderBy: { id: "desc" }, take: 1 },
     },
   });
 
@@ -975,7 +988,7 @@ const generateWordRapor = async (nis) => {
       },
       halaqoh_tahsin: { include: { user: true } },
       halaqoh_tahfidz: { include: { user: true } },
-      setoranTahsin: { orderBy: { timestamp: "asc" } },
+      setoranTahsin: { orderBy: { timestamp: "asc" }, include: { surah: true } },
       setoranHafalan: {
         orderBy: { timestamp: "asc" },
         include: { surah: true },
