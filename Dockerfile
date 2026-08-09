@@ -11,7 +11,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Menginstal dependensi (termasuk prisma client)
-RUN npm install
+RUN npm install --network-timeout=1000000
 
 # Menyalin folder prisma (schema) untuk digenerate
 COPY prisma ./prisma/
