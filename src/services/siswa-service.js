@@ -541,13 +541,25 @@ const getWaitingHalaqoh = async (kategori) => {
       },
       ujianPretest: {
         orderBy: { id: "desc" },
-        take: 1,
         select: { tahapan: true, keterangan: true, jilid: true, halaman: true, no_surah: true, ayat_awal: true, ayat_akhir: true, materi: true },
       },
     },
     orderBy: { nama: "asc" },
   });
-  return { data };
+  const formattedData = data.map((student) => {
+    let correctPretest = null;
+    if (student.ujianPretest && student.ujianPretest.length > 0) {
+      if (student.tahapan_tahsin) {
+        correctPretest = student.ujianPretest.find(up => up.tahapan === student.tahapan_tahsin);
+      }
+      if (!correctPretest) correctPretest = student.ujianPretest[0];
+    }
+    return {
+      ...student,
+      ujianPretest: correctPretest ? [correctPretest] : []
+    };
+  });
+  return { data: formattedData };
 };
 
 export default {
