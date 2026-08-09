@@ -47,6 +47,7 @@ enum Tahapan {
   GHARIB
   TAJWID
   MUNAQOSYAH
+  ALQURAN // Deprecated: sudah tidak dipakai di aplikasi, tetapi harus tetap ada di schema karena PostgreSQL tidak bisa DROP enum value yang sudah terdaftar di tipe enum.
 }
 
 enum STATUS_KELULUSAN {
