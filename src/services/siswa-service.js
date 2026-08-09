@@ -11,14 +11,29 @@ import { validate } from "../validation/validation.js";
 
 const formatKelas = (kelasInput) => {
   if (!kelasInput) return kelasInput;
-  const regex = /^([1-6]|I{1,3}|IV|V|VI)[\s-]*([a-zA-Z])$/i;
-  const match = kelasInput.match(regex);
+  
+  // 1. Bersihkan spasi depan/belakang dan ubah ke uppercase
+  let cleaned = kelasInput.toString().trim().toUpperCase();
+  
+  // 2. Hapus kata "KELAS", "KLS", dll jika ada
+  cleaned = cleaned.replace(/^(KELAS|KLS)\s*/, "");
+  
+  // 3. Regex baru yang lebih fleksibel (huruf seksi opsional)
+  const regex = /^([1-6]|I{1,3}|IV|V|VI)(?:[\s-]*([A-Z]))?$/;
+  
+  const match = cleaned.match(regex);
   if (match) {
-    const angkaRomawi = { 1: "I", 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI" };
-    const romawi = angkaRomawi[match[1]] || match[1].toUpperCase();
-    return `${romawi}-${match[2].toUpperCase()}`;
+    const angkaRomawi = { "1": "I", "2": "II", "3": "III", "4": "IV", "5": "V", "6": "VI" };
+    // Jika input romawi, gunakan langsung. Jika angka, ubah ke romawi.
+    const romawi = angkaRomawi[match[1]] || match[1];
+    
+    // Jika ada seksi (A, B, dll), format jadi "VI-A". Jika tidak ada, kembalikan "VI"
+    const section = match[2];
+    return section ? `${romawi}-${section}` : romawi;
   }
-  return kelasInput.toUpperCase();
+  
+  // 4. Fallback jika format benar-benar aneh
+  return cleaned;
 };
 
 const importSiswaExcelSync = async (filePath) => {

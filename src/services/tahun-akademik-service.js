@@ -45,21 +45,35 @@ const createTahunAkademik = async (request) => {
 };
 
 const incrementClass = (className) => {
-  const parts = className.split('-');
-  if (parts.length !== 2) return className; 
+  if (!className) return className;
   
-  const grade = parts[0];
-  const section = parts[1];
+  const normalized = className.trim().toUpperCase();
+  const parts = normalized.split('-');
+  
   const romanMap = {
     "I": "II", "II": "III", "III": "IV", "IV": "V", "V": "VI", "VI": "LULUS",
     "1": "2", "2": "3", "3": "4", "4": "5", "5": "6", "6": "LULUS"
   };
-  
-  const nextGrade = romanMap[grade.toUpperCase()];
-  if (!nextGrade) return className;
-  if (nextGrade === "LULUS") return "LULUS";
-  
-  return `${nextGrade}-${section}`;
+
+  if (parts.length === 2) {
+    const grade = parts[0].trim();
+    const section = parts[1].trim();
+    const nextGrade = romanMap[grade];
+    if (nextGrade) {
+      return nextGrade === "LULUS" ? "LULUS" : `${nextGrade}-${section}`;
+    }
+  }
+
+  if (parts.length === 1) {
+    const grade = parts[0].trim();
+    const nextGrade = romanMap[grade];
+    if (nextGrade) {
+      return nextGrade;
+    }
+  }
+
+  console.warn(`[transisiSemester] Nama kelas tidak dikenali: "${className}"`);
+  return className;
 };
 
 const transisiSemester = async (request) => {
