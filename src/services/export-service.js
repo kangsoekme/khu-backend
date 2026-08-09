@@ -94,25 +94,36 @@ const formatTahapan = (val) => {
   return map[val] || val.replace(/_/g, " ");
 };
 const filterSetoranByAcademicYear = (siswa, list = []) => {
-  if (!list || list.length === 0) return [];
-  let startYear = new Date().getFullYear();
-  if (new Date().getMonth() + 1 < 7) {
-    startYear -= 1;
-  }
+  if (!list || list.length === 0) return list;
+
+  // 1. Coba ambil tahun dari nama_tahun (contoh: "2025/2026 Ganjil" → 2025)
   const namaTahun = siswa?.riwayatKelas?.[0]?.tahun_akademik?.nama_tahun || "";
-  const match = namaTahun.match(/(\d{4})/);
-  if (match && !isNaN(parseInt(match[1]))) {
-    startYear = parseInt(match[1]);
+  const matchTahun = namaTahun.match(/(\d{4})/);
+
+  let academicStartDate = null;
+
+  if (matchTahun && !isNaN(parseInt(matchTahun[1]))) {
+    const startYear = parseInt(matchTahun[1]);
+    // Gunakan WIB (UTC+7): 1 Juli tahun = 30 Juni jam 17:00 UTC sehari sebelumnya
+    academicStartDate = new Date(`${startYear}-06-30T17:00:00.000Z`);
+  } else {
+    // Tidak ada relasi tahun akademik: jangan filter, tampilkan semua setoran
+    return list;
   }
-  const academicStartDate = new Date(`${startYear}-07-01T00:00:00.000Z`);
-  return list.filter(item => {
+
+  const filtered = list.filter(item => {
     if (!item.timestamp) return false;
     return new Date(item.timestamp) >= academicStartDate;
   });
+
+  // Fallback: jika filter menghasilkan kosong, kembalikan SEMUA data (jangan tampilkan kosong)
+  return filtered.length > 0 ? filtered : list;
 };
 
 const computeCapaianSiswa = (siswa, periode = "semester") => {
-  const tahsinList = filterSetoranByAcademicYear(siswa, siswa.setoranTahsin || []);
+  // Kecualikan setoran placement (ujian pretest) dari tampilan laporan
+  const allTahsin = (siswa.setoranTahsin || []).filter(s => !s.is_placement);
+  const tahsinList = filterSetoranByAcademicYear(siswa, allTahsin);
   let awalJilidTahsin = "-";
   let awalHalTahsin = "-";
   let capaianJilidTahsin = "-";
