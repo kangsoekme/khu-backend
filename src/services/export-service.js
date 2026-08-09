@@ -879,28 +879,31 @@ const generateWordLaporanUmmi = async () => {
     const k = String(s.riwayatKelas?.[0]?.nama_kelas || "").toUpperCase();
     let prefix = "sd1";
     
+    // Urutan deteksi: HARUS dari yang lebih panjang ke pendek agar tidak salah tangkap
+    // (misal: VI harus dicek sebelum V dan I, IV sebelum I, III sebelum II, dsb.)
     if (k.match(/TPQ/)) {
       prefix = "tpq";
     } else if (k.match(/KB/)) {
       prefix = "kb";
-    } else if (k.match(/TK\s*A/)) {
+    } else if (k.match(/TK[\s-]*A/)) {
       prefix = "tka";
-    } else if (k.match(/TK\s*B/)) {
+    } else if (k.match(/TK[\s-]*B/)) {
       prefix = "tkb";
-    } else if (k.match(/1|I\b/)) {
-      prefix = "sd1";
-    } else if (k.match(/2|II\b/)) {
-      prefix = "sd2";
-    } else if (k.match(/3|III\b/)) {
-      prefix = "sd3";
-    } else if (k.match(/4|IV\b/)) {
-      prefix = "sd4";
-    } else if (k.match(/5|V\b/)) {
-      prefix = "sd5";
-    } else if (k.match(/6|VI\b/)) {
+    } else if (k.match(/VI|6/)) {
       prefix = "sd6";
+    } else if (k.match(/^V[\s-]|[\s-]V[\s-]|V$|5/)) {
+      prefix = "sd5";
+    } else if (k.match(/IV|4/)) {
+      prefix = "sd4";
+    } else if (k.match(/III|3/)) {
+      prefix = "sd3";
+    } else if (k.match(/II[\s-]|II$|2/)) {
+      prefix = "sd2";
+    } else if (k.match(/I[\s-]|I$|1/)) {
+      prefix = "sd1";
     }
 
+    // Prioritas: field langsung di tabel siswa > pretest > setoran terakhir
     const currentTahap = String(
       s.tahapan_tahsin ||
       s.ujianPretest?.[0]?.tahapan ||
@@ -908,27 +911,27 @@ const generateWordLaporanUmmi = async () => {
       ""
     ).toUpperCase();
 
-    let col = "lain";
-    if (currentTahap.includes("JILID_1") || currentTahap === "JILID 1") {
+    let col = null; // null = tidak punya data sama sekali (tidak dihitung ke kolom manapun)
+    if (currentTahap === "JILID_1") {
       col = "j1";
-    } else if (currentTahap.includes("JILID_2") || currentTahap === "JILID 2") {
+    } else if (currentTahap === "JILID_2") {
       col = "j2";
-    } else if (currentTahap.includes("JILID_3") || currentTahap === "JILID 3") {
+    } else if (currentTahap === "JILID_3") {
       col = "j3";
-    } else if (currentTahap.includes("JILID_4") || currentTahap === "JILID 4") {
+    } else if (currentTahap === "JILID_4") {
       col = "j4";
-    } else if (currentTahap.includes("JILID_5") || currentTahap === "JILID 5") {
+    } else if (currentTahap === "JILID_5") {
       col = "j5";
-    } else if (currentTahap.includes("JILID_6") || currentTahap === "JILID 6") {
+    } else if (currentTahap === "JILID_6") {
       col = "j6";
-    } else if (currentTahap.includes("GHARIB") || currentTahap.includes("GHORIB")) {
+    } else if (currentTahap === "GHARIB" || currentTahap === "GHORIB") {
       col = "ghorib";
-    } else if (currentTahap.includes("TAJWID")) {
+    } else if (currentTahap === "TAJWID") {
       col = "tajwid";
     } else if (
-      currentTahap.includes("TILAWAH") ||
-      currentTahap.includes("ALQURAN") ||
-      currentTahap.includes("MUNAQOSYAH") ||
+      currentTahap === "TILAWAH_JUZ_1_5" ||
+      currentTahap === "ALQURAN" ||
+      currentTahap === "MUNAQOSYAH" ||
       currentTahap.includes("QURAN") ||
       currentTahap.includes("JUZ")
     ) {
@@ -937,10 +940,14 @@ const generateWordLaporanUmmi = async () => {
       col = "dws";
     } else if (currentTahap.includes("PRA") || currentTahap.includes("TK")) {
       col = "pratk";
+    } else if (currentTahap !== "") {
+      // Ada tahapan tapi tidak dikenal
+      col = "lain";
     }
+    // Jika currentTahap kosong: col tetap null, tidak dihitung ke kolom manapun
 
     stats[`${prefix}_jml`]++;
-    stats[`${prefix}_${col}`]++;
+    if (col) stats[`${prefix}_${col}`]++;
   });
 
   const renderData = {
