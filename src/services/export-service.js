@@ -867,41 +867,27 @@ const generateWordLaporanUmmi = async () => {
   siswaList.forEach((s) => {
     const k = String(s.riwayatKelas?.[0]?.nama_kelas || "").toUpperCase();
     let prefix = "sd1";
-    if (
-      (k.includes("I") &&
-        !k.includes("II") &&
-        !k.includes("IV") &&
-        !k.includes("VI")) ||
-      k.startsWith("1")
-    ) {
-      prefix = "sd1";
-    } else if (
-      (k.includes("II") && !k.includes("III") && !k.includes("VII")) ||
-      k.startsWith("2")
-    ) {
-      prefix = "sd2";
-    } else if (
-      (k.includes("III") && !k.includes("VIII")) ||
-      k.startsWith("3")
-    ) {
-      prefix = "sd3";
-    } else if ((k.includes("IV") && !k.includes("XIV")) || k.startsWith("4")) {
-      prefix = "sd4";
-    } else if (
-      (k.includes("V") && !k.includes("VI") && !k.includes("IV")) ||
-      k.startsWith("5")
-    ) {
-      prefix = "sd5";
-    } else if (k.includes("VI") || k.startsWith("6")) {
-      prefix = "sd6";
-    } else if (k.includes("TPQ")) {
+    
+    if (k.match(/TPQ/)) {
       prefix = "tpq";
-    } else if (k.includes("KB")) {
+    } else if (k.match(/KB/)) {
       prefix = "kb";
-    } else if (k.includes("TK A")) {
+    } else if (k.match(/TK\s*A/)) {
       prefix = "tka";
-    } else if (k.includes("TK B")) {
+    } else if (k.match(/TK\s*B/)) {
       prefix = "tkb";
+    } else if (k.match(/1|I\b/)) {
+      prefix = "sd1";
+    } else if (k.match(/2|II\b/)) {
+      prefix = "sd2";
+    } else if (k.match(/3|III\b/)) {
+      prefix = "sd3";
+    } else if (k.match(/4|IV\b/)) {
+      prefix = "sd4";
+    } else if (k.match(/5|V\b/)) {
+      prefix = "sd5";
+    } else if (k.match(/6|VI\b/)) {
+      prefix = "sd6";
     }
 
     const currentTahap = String(
