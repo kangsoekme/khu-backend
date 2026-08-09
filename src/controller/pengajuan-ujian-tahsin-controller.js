@@ -1,10 +1,15 @@
 import pengajuanUjianTahsinService from "../services/pengajuan-ujian-tahsin-service.js";
+import ownershipCheck from "../middleware/ownership-check.js";
 
 const addPengajuan = async (req, res, next) => {
   try {
     const request = req.body;
     request.nis_siswa = req.params.nis;
     request.id_guru = req.user.id;
+
+    // BUG-03: cegah horizontal privilege escalation — Guru hanya boleh
+    // mengajukan ujian untuk siswa di halaqoh-nya sendiri.
+    await ownershipCheck.assertGuruOwnsSiswa(req.user, request.nis_siswa);
 
     const result = await pengajuanUjianTahsinService.addPengajuan(request);
     res.status(200).json({ status: "success", data: result });

@@ -15,12 +15,11 @@ const tahsinValidation = Joi.object({
       "TILAWAH_JUZ_1_5",
       "GHARIB",
       "TAJWID",
-      "ALQURAN",
       "MUNAQOSYAH",
     )
     .required(),
 
-  // Field untuk bacaan Al-Quran (Gharib, Tajwid, AlQuran, dst)
+  // Field untuk bacaan Al-Quran (Gharib, Tajwid, dst)
   no_surah: Joi.number().min(1).max(114).allow(null).optional(),
   ayat_awal: Joi.number().min(0).optional(),
   ayat_akhir: Joi.number().max(286).optional(),
@@ -57,7 +56,6 @@ const pretestValidation = Joi.object({
       "TILAWAH_JUZ_1_5",
       "GHARIB",
       "TAJWID",
-      "ALQURAN",
       "MUNAQOSYAH",
     )
     .required(),

@@ -282,7 +282,12 @@ userRouter.post(
 
 // database Al-Quran
 
-userRouter.get("/api/all-surah", authMiddleware.verifyToken, surahController.getAllSurah);
+userRouter.get(
+  "/api/all-surah",
+  authMiddleware.verifyToken,
+  authMiddleware.requireRole(["SUPER_ADMIN", "DIREKTUR", "GURU"]),
+  surahController.getAllSurah,
+);
 
 // dashboard
 

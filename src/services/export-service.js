@@ -76,8 +76,9 @@ const gradeMap = {
 
 const formatTahapan = (val) => {
   if (!val || val === "-") return "-";
-  // BE-5: key enum harus sesuai prisma/schema.prisma (ALQURAN, GHARIB),
-  // bukan AL_QURAN/GHORIB yang menyebabkan label tampil mentah.
+  // BE-5: key enum harus sesuai prisma/schema.prisma (GHARIB),
+  // bukan GHORIB yang menyebabkan label tampil mentah.
+  // ALQURAN telah dihapus dari enum; data lama di-migrate ke MUNAQOSYAH.
   const map = {
     JILID_1: "Jilid 1",
     JILID_2: "Jilid 2",
@@ -86,7 +87,6 @@ const formatTahapan = (val) => {
     JILID_5: "Jilid 5",
     JILID_6: "Jilid 6",
     TILAWAH_JUZ_1_5: "Tilawah Juz 1-5",
-    ALQURAN: "Al-Qur'an",
     GHARIB: "Gharib",
     TAJWID: "Tajwid",
     MUNAQOSYAH: "Munaqosyah",
@@ -930,7 +930,6 @@ const generateWordLaporanUmmi = async () => {
       col = "tajwid";
     } else if (
       currentTahap === "TILAWAH_JUZ_1_5" ||
-      currentTahap === "ALQURAN" ||
       currentTahap === "MUNAQOSYAH" ||
       currentTahap.includes("QURAN") ||
       currentTahap.includes("JUZ")

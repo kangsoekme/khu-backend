@@ -11,7 +11,6 @@ const TAHAPAN = [
   "TILAWAH_JUZ_1_5",
   "GHARIB",
   "TAJWID",
-  "ALQURAN",
   "MUNAQOSYAH",
 ];
 const STATUS_KELULUSAN = ["LULUS", "TIDAK_LULUS"];

@@ -46,7 +46,6 @@ enum Tahapan {
   TILAWAH_JUZ_1_5
   GHARIB
   TAJWID
-  ALQURAN
   MUNAQOSYAH
 }
 

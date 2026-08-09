@@ -29,6 +29,8 @@ const addUjianKenaikanTahsin = async (request) => {
     const targetTahapan =
       tahapan_baru || pengajuan?.tahapan || siswa.tahapan_tahsin;
 
+    const idGuru = pengajuan?.id_guru || null;
+
     await prisma.pengajuan_Ujian.deleteMany({
       where: { nis_siswa: nis_siswa, kategori: "TAHSIN" },
     });
@@ -49,6 +51,31 @@ const addUjianKenaikanTahsin = async (request) => {
         where: { nis: nis_siswa },
         data: { tahapan_tahsin: targetTahapan },
       });
+
+      // BUG-02 part C: Seed placement setoran sebagai titik awal tahap baru.
+      // Mencegah status capaian pasca-promosi membaca record tahap LAMA.
+      // Mengikuti pola addPretest (tahsin-service.js L103-120).
+      // Pengecualian: Munaqosyah adalah tahap ujian final tanpa setoran,
+      // jadi tidak perlu seed placement.
+      if (targetTahapan !== "MUNAQOSYAH") {
+        await prisma.setoran_Tahsin.create({
+          data: {
+            nis_siswa,
+            id_kelompok: siswa.halaqoh_tahsin_id || null,
+            tahapan: targetTahapan,
+            jilid: null,
+            bab: null,
+            no_surah: null,
+            ayat_awal: null,
+            ayat_akhir: null,
+            materi: null,
+            nilai: "A+",
+            keterangan: "Titik awal placement pasca-ujian kenaikan",
+            status_kelanjutan: "LANJUT",
+            is_placement: true,
+          },
+        });
+      }
     }
 
     return ujian;

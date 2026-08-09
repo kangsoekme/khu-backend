@@ -22,7 +22,6 @@ const siswaValidation = Joi.object({
     "TILAWAH_JUZ_1_5",
     "GHARIB",
     "TAJWID",
-    "ALQURAN",
     "MUNAQOSYAH",
   ),
 });
@@ -49,7 +48,6 @@ const editSiswaValidation = Joi.object({
     "TILAWAH_JUZ_1_5",
     "GHARIB",
     "TAJWID",
-    "ALQURAN",
     "MUNAQOSYAH",
   ),
 });
