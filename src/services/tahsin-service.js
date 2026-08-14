@@ -50,7 +50,7 @@ const addTahsin = async (request) => {
         materi: tahsin.materi,
 
         nilai: tahsin.nilai,
-        keterangan: tahsin.keterangan,
+        keterangan: tahsin.keterangan ?? "",
         status_kelanjutan: statusKelanjutan,
       },
       include: {

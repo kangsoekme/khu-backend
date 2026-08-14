@@ -4,3 +4,6 @@ generated
 postman
 prisma/migrations
 prisma/seed.js
+# File lokal (testing/dev) - JANGAN di-push
+docker-compose.local.yaml
+drop_reset_db.mjs

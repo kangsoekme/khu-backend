@@ -246,8 +246,11 @@ const editHalaqoh = async (halaqohId, request) => {
     throw new ResponseError(404, "Halaqoh not found");
   }
 
+  const userId = halaqoh.userId ?? exitingHalaqoh.userId;
+  const kategori = halaqoh.kategori ?? exitingHalaqoh.kategori;
+
   const guru = await prismaClient.user.findUnique({
-    where: { id: halaqoh.userId },
+    where: { id: userId },
   });
 
   if (!guru) {
@@ -258,25 +261,26 @@ const editHalaqoh = async (halaqohId, request) => {
     throw new ResponseError(400, "User bukan Muhassin / Muhaffidz");
   }
 
+  const data = {
+    nama: halaqoh.nama ?? exitingHalaqoh.nama,
+    kategori,
+  };
+
+  if (halaqoh.userId !== undefined) data.user = { connect: { id: userId } };
+  if (halaqoh.nis_siswa !== undefined) {
+    data.siswaTahsin = {
+      set:
+        kategori === "TAHSIN" ? halaqoh.nis_siswa.map((nis) => ({ nis })) : [],
+    };
+    data.siswaTahfidz = {
+      set:
+        kategori === "TAHFIDZ" ? halaqoh.nis_siswa.map((nis) => ({ nis })) : [],
+    };
+  }
+
   return prismaClient.halaqoh.update({
     where: { id: halaqohId },
-    data: {
-      nama: halaqoh.nama,
-      kategori: halaqoh.kategori,
-      user: { connect: { id: halaqoh.userId } },
-      siswaTahsin: {
-        set:
-          halaqoh.kategori === "TAHSIN"
-            ? halaqoh.nis_siswa.map((nis) => ({ nis: nis }))
-            : [],
-      },
-      siswaTahfidz: {
-        set:
-          halaqoh.kategori === "TAHFIDZ"
-            ? halaqoh.nis_siswa.map((nis) => ({ nis: nis }))
-            : [],
-      },
-    },
+    data,
     include: {
       user: {
         select: { id: true, nama: true, no_telp: true },
@@ -379,18 +383,20 @@ const autoGenerateHalaqoh = async (kategori, targetSize = 11) => {
         s.tahapan_tahsin !== null,
     );
   }
-  
+
   validStudents = validStudents.map((student) => {
     let correctPretest = null;
     if (student.ujianPretest && student.ujianPretest.length > 0) {
       if (student.tahapan_tahsin) {
-        correctPretest = student.ujianPretest.find(up => up.tahapan === student.tahapan_tahsin);
+        correctPretest = student.ujianPretest.find(
+          (up) => up.tahapan === student.tahapan_tahsin,
+        );
       }
       if (!correctPretest) correctPretest = student.ujianPretest[0];
     }
     return {
       ...student,
-      ujianPretest: correctPretest ? [correctPretest] : []
+      ujianPretest: correctPretest ? [correctPretest] : [],
     };
   });
 

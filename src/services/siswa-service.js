@@ -11,27 +11,27 @@ import { validate } from "../validation/validation.js";
 
 const formatKelas = (kelasInput) => {
   if (!kelasInput) return kelasInput;
-  
+
   // 1. Bersihkan spasi depan/belakang dan ubah ke uppercase
   let cleaned = kelasInput.toString().trim().toUpperCase();
-  
+
   // 2. Hapus kata "KELAS", "KLS", dll jika ada
   cleaned = cleaned.replace(/^(KELAS|KLS)\s*/, "");
-  
+
   // 3. Regex baru yang lebih fleksibel (huruf seksi opsional)
   const regex = /^([1-6]|I{1,3}|IV|V|VI)(?:[\s-]*([A-Z]))?$/;
-  
+
   const match = cleaned.match(regex);
   if (match) {
-    const angkaRomawi = { "1": "I", "2": "II", "3": "III", "4": "IV", "5": "V", "6": "VI" };
+    const angkaRomawi = { 1: "I", 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI" };
     // Jika input romawi, gunakan langsung. Jika angka, ubah ke romawi.
     const romawi = angkaRomawi[match[1]] || match[1];
-    
+
     // Jika ada seksi (A, B, dll), format jadi "VI-A". Jika tidak ada, kembalikan "VI"
     const section = match[2];
     return section ? `${romawi}-${section}` : romawi;
   }
-  
+
   // 4. Fallback jika format benar-benar aneh
   return cleaned;
 };
@@ -121,7 +121,7 @@ const addSiswa = async (request) => {
       nis: request.nis,
       nama: request.nama,
       jenis_kelamin: request.jenis_kelamin,
-      tanggal_lahir: request.tanggal_lahir,
+      tanggal_lahir: new Date(request.tanggal_lahir),
       alamat: request.alamat,
       nama_wali: request.nama_wali,
       no_telp: request.no_telp,
@@ -192,7 +192,9 @@ const editSiswa = async (nis, request) => {
       nis: request.nis,
       nama: request.nama,
       jenis_kelamin: request.jenis_kelamin,
-      tanggal_lahir: request.tanggal_lahir,
+      tanggal_lahir: request.tanggal_lahir
+        ? new Date(request.tanggal_lahir)
+        : undefined,
       alamat: request.alamat,
       nama_wali: request.nama_wali,
       no_telp: request.no_telp,
@@ -489,7 +491,16 @@ const getWaitingPretest = async () => {
       ujianPretest: {
         orderBy: { id: "desc" },
         take: 1,
-        select: { tahapan: true, keterangan: true, jilid: true, halaman: true, no_surah: true, ayat_awal: true, ayat_akhir: true, materi: true },
+        select: {
+          tahapan: true,
+          keterangan: true,
+          jilid: true,
+          halaman: true,
+          no_surah: true,
+          ayat_awal: true,
+          ayat_akhir: true,
+          materi: true,
+        },
       },
     },
     orderBy: { nama: "asc" },
@@ -556,7 +567,16 @@ const getWaitingHalaqoh = async (kategori) => {
       },
       ujianPretest: {
         orderBy: { id: "desc" },
-        select: { tahapan: true, keterangan: true, jilid: true, halaman: true, no_surah: true, ayat_awal: true, ayat_akhir: true, materi: true },
+        select: {
+          tahapan: true,
+          keterangan: true,
+          jilid: true,
+          halaman: true,
+          no_surah: true,
+          ayat_awal: true,
+          ayat_akhir: true,
+          materi: true,
+        },
       },
     },
     orderBy: { nama: "asc" },
@@ -565,13 +585,15 @@ const getWaitingHalaqoh = async (kategori) => {
     let correctPretest = null;
     if (student.ujianPretest && student.ujianPretest.length > 0) {
       if (student.tahapan_tahsin) {
-        correctPretest = student.ujianPretest.find(up => up.tahapan === student.tahapan_tahsin);
+        correctPretest = student.ujianPretest.find(
+          (up) => up.tahapan === student.tahapan_tahsin,
+        );
       }
       if (!correctPretest) correctPretest = student.ujianPretest[0];
     }
     return {
       ...student,
-      ujianPretest: correctPretest ? [correctPretest] : []
+      ujianPretest: correctPretest ? [correctPretest] : [],
     };
   });
   return { data: formattedData };

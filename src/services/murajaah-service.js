@@ -111,7 +111,10 @@ const editMurajaah = async (id, request) => {
   });
   if (!setoran) throw new ResponseError(404, "Data murajaah tidak ditemukan");
 
-  const { nis_siswa, halaqohId, no_surah, ayat_awal, ayat_akhir, jumlah_salah, nilai_bacaan } = request;
+  const { nis_siswa, halaqohId, no_surah, ayat_awal, ayat_akhir } = request;
+
+  const jumlah_salah = request.jumlah_salah ?? setoran.jumlah_salah;
+  const nilai_bacaan = request.nilai_bacaan ?? setoran.nilai_bacaan;
 
   let nilaiHafalan = 95 - jumlah_salah * 10;
   if (nilaiHafalan < 60) nilaiHafalan = 60;

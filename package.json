@@ -10,7 +10,9 @@
     "start": "node src/main.js",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
-    "db:seed": "node prisma/seed-tahun.js"
+    "db:seed": "node prisma/seed-tahun.js",
+    "test:reset": "node scripts/reset-test-data.mjs --apply",
+    "test:reset:dry": "node scripts/reset-test-data.mjs"
   },
   "keywords": [],
   "author": "",

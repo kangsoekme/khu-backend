@@ -37,7 +37,6 @@ const getDatabaseBackup = async () => {
   });
   const halaqoh = await prismaClient.halaqoh.findMany();
   const surah = await prismaClient.surah.findMany();
-  const bab_jilid = await prismaClient.bab_Jilid.findMany();
   const tahun_akademik = await prismaClient.tahun_Akademik.findMany();
   const riwayat_kelas = await prismaClient.riwayat_Kelas.findMany();
   const setoran_hafalan = await prismaClient.setoran_Hafalan.findMany();
@@ -55,7 +54,6 @@ const getDatabaseBackup = async () => {
       siswa,
       halaqoh,
       surah,
-      bab_jilid,
       tahun_akademik,
       riwayat_kelas,
       setoran_hafalan,
@@ -81,9 +79,7 @@ const restoreDatabaseBackup = async (backupData) => {
   // mengandung field `token` → createMany akan error "unknown field".
   // Solusi: hapus field token dari setiap baris sebelum insert.
   const stripLegacyToken = (rows) =>
-    Array.isArray(rows)
-      ? rows.map(({ token, ...rest }) => rest)
-      : rows;
+    Array.isArray(rows) ? rows.map(({ token, ...rest }) => rest) : rows;
 
   const users = stripLegacyToken(data.users);
   const siswa = stripLegacyToken(data.siswa);

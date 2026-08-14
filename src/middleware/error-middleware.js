@@ -18,9 +18,9 @@ const errorMiddleware = async (err, req, res, next) => {
       })
       .end();
   } else {
+    console.error("[UNHANDLED]", err);
     res.status(500).json({
       status: "error",
-      // Sembunyikan detail error internal pada produksi
       message: "Terjadi kesalahan pada server",
     });
   }
