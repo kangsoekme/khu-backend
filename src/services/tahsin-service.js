@@ -6,6 +6,42 @@ import { prismaClient } from "../application/database.js";
 import { ResponseError } from "../error/response-error.js";
 import { validate } from "../validation/validation.js";
 
+// Validasi rentang ayat terhadap jumlah ayat surah sebenarnya (tabel surah).
+// Mengikuti pola hafalan-service agar tahsin & tahfidz konsisten:
+// ayat tidak boleh melebihi jumlah_ayat surah yang dipilih.
+const validasiAyatSurah = async (noSurah, ayatAwal, ayatAkhir, label) => {
+  const surah = await prismaClient.surah.findUnique({
+    where: { no_surah: Number(noSurah) },
+  });
+
+  if (!surah) {
+    throw new ResponseError(400, `Surah nomor ${noSurah} tidak ditemukan`);
+  }
+
+  const awal = Number(ayatAwal) || 0;
+  const akhir = Number(ayatAkhir) || 0;
+
+  // Tidak ada ayat yang diisi -> tidak ada yang perlu divalidasi
+  if (awal <= 0 && akhir <= 0) return;
+
+  if (awal > 0 && akhir > 0 && awal > akhir) {
+    throw new ResponseError(
+      400,
+      `Ayat awal ${label} tidak boleh lebih besar dari ayat akhir`,
+    );
+  }
+
+  if (
+    (awal > 0 && awal > surah.jumlah_ayat) ||
+    (akhir > 0 && akhir > surah.jumlah_ayat)
+  ) {
+    throw new ResponseError(
+      400,
+      `Ayat ${label} melebihi jumlah ayat QS ${surah.nama_surah} (${surah.jumlah_ayat} ayat)`,
+    );
+  }
+};
+
 const addTahsin = async (request) => {
   const tahsin = validate(tahsinValidation, request);
 
@@ -23,6 +59,24 @@ const addTahsin = async (request) => {
 
   if (!halaqoh) {
     throw new ResponseError(404, "Halaqoh tidak ditemukan");
+  }
+
+  // Cross-check ayat bacaan & hafalan terhadap jumlah ayat surah
+  if (tahsin.no_surah) {
+    await validasiAyatSurah(
+      tahsin.no_surah,
+      tahsin.ayat_awal,
+      tahsin.ayat_akhir,
+      "bacaan",
+    );
+  }
+  if (tahsin.hafalan_surah) {
+    await validasiAyatSurah(
+      tahsin.hafalan_surah,
+      tahsin.hafalan_ayat_awal,
+      tahsin.hafalan_ayat_akhir,
+      "hafalan",
+    );
   }
 
   const daftarNilaiLanjut = ["A+", "A", "B+", "B"];
@@ -75,6 +129,16 @@ const addPretest = async (request) => {
 
   if (!siswa) {
     throw new ResponseError(404, "Data siswa tidak ditemukkan");
+  }
+
+  // Cross-check ayat placement terhadap jumlah ayat surah
+  if (pretest.no_surah) {
+    await validasiAyatSurah(
+      pretest.no_surah,
+      pretest.ayat_awal,
+      pretest.ayat_akhir,
+      "bacaan",
+    );
   }
 
   const [hasilPretest] = await prismaClient.$transaction([

@@ -21,14 +21,15 @@ const tahsinValidation = Joi.object({
 
   // Field untuk bacaan Al-Quran (Gharib, Tajwid, dst)
   no_surah: Joi.number().min(1).max(114).allow(null).optional(),
-  ayat_awal: Joi.number().min(0).optional(),
-  ayat_akhir: Joi.number().max(286).optional(),
+  // 286 = jumlah ayat terbanyak (QS Al-Baqarah); batas per-surah dicek di service
+  ayat_awal: Joi.number().min(0).max(286).optional(),
+  ayat_akhir: Joi.number().min(0).max(286).optional(),
   materi: Joi.string().optional(),
 
   // Field untuk hafalan surah
   hafalan_surah: Joi.number().min(0).max(114).allow(null).optional(),
-  hafalan_ayat_awal: Joi.number().allow(null).optional(),
-  hafalan_ayat_akhir: Joi.number().allow(null).optional(),
+  hafalan_ayat_awal: Joi.number().min(0).max(286).allow(null).optional(),
+  hafalan_ayat_akhir: Joi.number().min(0).max(286).allow(null).optional(),
 
   // Field untuk Jilid/Buku
   jilid: Joi.number().min(0).allow(null).optional(),
@@ -120,8 +121,9 @@ const pretestValidation = Joi.object({
       }),
   }),
   no_surah: Joi.number().allow(null).optional(),
-  ayat_awal: Joi.number().allow(null).optional(),
-  ayat_akhir: Joi.number().allow(null).optional(),
+  // 286 = jumlah ayat terbanyak (QS Al-Baqarah); batas per-surah dicek di service
+  ayat_awal: Joi.number().min(1).max(286).allow(null).optional(),
+  ayat_akhir: Joi.number().min(1).max(286).allow(null).optional(),
   materi: Joi.string().allow("", null).optional(),
 }).unknown(true);
 
