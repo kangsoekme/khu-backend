@@ -25,6 +25,25 @@ const getActiveTahunAkademik = async () => {
 const createTahunAkademik = async (request) => {
   const data = validate(createTahunAkademikValidation, request);
 
+  // Pastikan tahun berurutan (tahun kedua = tahun pertama + 1) dan dalam rentang wajar
+  const match = data.nama_tahun.match(/^(\d{4})\/(\d{4}) (GANJIL|GENAP)$/);
+  if (match) {
+    const awal = Number(match[1]);
+    const akhir = Number(match[2]);
+    if (akhir !== awal + 1) {
+      throw new ResponseError(
+        400,
+        `Tahun ajaran harus berurutan, contoh: ${awal}/${awal + 1}`,
+      );
+    }
+    if (awal < 2000 || awal > 2100) {
+      throw new ResponseError(
+        400,
+        "Tahun ajaran harus di antara 2000 dan 2100",
+      );
+    }
+  }
+
   const existing = await prismaClient.tahun_Akademik.findFirst({
     where: { nama_tahun: data.nama_tahun },
   });

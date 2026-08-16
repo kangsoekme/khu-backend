@@ -11,6 +11,8 @@
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:seed": "node prisma/seed-tahun.js",
+    "db:cleanup-tahun": "node prisma/cleanup-tahun-akademik.js",
+    "db:cleanup-tahun:delete": "node prisma/cleanup-tahun-akademik.js --delete",
     "test:reset": "node scripts/reset-test-data.mjs --apply",
     "test:reset:dry": "node scripts/reset-test-data.mjs"
   },
