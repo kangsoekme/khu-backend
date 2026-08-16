@@ -6,12 +6,14 @@
 //   - Siswa         : nis dalam [9001001, 9001002, 9001999]
 //   - User guru     : email berakhiran "@khu.test"
 //   - Halaqoh       : nama mengandung "Postman"
-//   - Tahun Akademik: nama mengandung "Postman" (aktif maupun non-aktif)
+//   - Tahun Akademik: marker lama "Postman" (pra-validasi format, run lama)
+//                     ATAU marker baru "2099/xxxx" (valid format YYYY/YYYY
+//                     GANJIL|GENAP sekaligus tidak dipakai data asli)
 //
 // KHUSUS TAHUN AKADEMIK: folder Transisi Semester (18.1) pada run sebelumnya
-// dapat MENGAKTIFKAN dummy ber-marker "Postman". Sebelum menghapus dummy,
-// script otomatis me-re-aktivasi tahun akademik ASLI (non-Postman) pertama
-// agar tidak ada periode aktif yang hilang.
+// dapat MENGAKTIFKAN dummy. Sebelum menghapus dummy, script otomatis
+// me-re-aktivasi tahun akademik ASLI (non-dummy) pertama agar tidak ada
+// periode aktif yang hilang.
 //
 // TIDAK PERNAH menyentuh:
 //   - Akun SuperAdmin & Direktur
@@ -34,12 +36,21 @@ import { prismaClient } from "../src/application/database.js";
 
 const APPLY = process.argv.includes("--apply");
 
+// Filter tahun akademik dummy — dipakai untuk pencarian, deteksi dummy aktif,
+// dan pengecualian tahun asli (marker lama "Postman" + marker baru "2099/").
+const isTahunDummy = {
+  OR: [
+    { nama_tahun: { contains: "Postman" } },
+    { nama_tahun: { startsWith: "2099/" } },
+  ],
+};
+
 // Kondisi pencarian data dummy (marker ketat, lihat header).
 const where = {
   siswa: { nis: { in: ["9001001", "9001002", "9001999"] } },
   guru: { email: { endsWith: "@khu.test" } },
   halaqoh: { nama: { contains: "Postman" } },
-  tahun: { nama_tahun: { contains: "Postman" } },
+  tahun: isTahunDummy,
 };
 
 // Guard: env DB harus ada.
@@ -101,13 +112,13 @@ const applyReset = async () => {
     //    Jika ada dummy yang sedang AKTIF (efek folder Transisi Semester 18.1),
     //    re-aktivasi tahun akademik ASLI pertama agar tidak ada periode aktif hilang.
     const dummyAktif = await t.tahun_Akademik.findFirst({
-      where: { AND: [{ nama_tahun: { contains: "Postman" } }, { is_active: true }] },
+      where: { AND: [isTahunDummy, { is_active: true }] },
       select: { id: true },
     });
     let tahunAsliDireaktifkan = null;
     if (dummyAktif) {
       const asli = await t.tahun_Akademik.findFirst({
-        where: { nama_tahun: { not: { contains: "Postman" } } },
+        where: { NOT: isTahunDummy },
         orderBy: { nama_tahun: "asc" },
         select: { id: true, nama_tahun: true },
       });

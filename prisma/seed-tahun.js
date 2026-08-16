@@ -8,7 +8,7 @@ async function main() {
   if (!existingTahun) {
     const tahunBaru = await prismaClient.tahun_Akademik.create({
       data: {
-        nama_tahun: 'Ganjil 2026/2027',
+        nama_tahun: '2026/2027 GANJIL', // format sesuai validasi createTahunAkademik (YYYY/YYYY GANJIL|GENAP)
         is_active: true,
       },
     });
