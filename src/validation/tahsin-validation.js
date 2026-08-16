@@ -32,7 +32,36 @@ const tahsinValidation = Joi.object({
 
   // Field untuk Jilid/Buku
   jilid: Joi.number().min(0).allow(null).optional(),
-  bab: Joi.number().min(0).allow(null).optional(),
+  // Batas halaman buku sesuai kurikulum: Jilid 1-6 & Tajwid = 40, Gharib = 45
+  bab: Joi.when("tahapan", {
+    is: "GHARIB",
+    then: Joi.number()
+      .integer()
+      .min(1)
+      .max(45)
+      .allow(null)
+      .optional()
+      .messages({
+        "number.base": "Halaman buku harus berupa angka",
+        "number.integer": "Halaman buku harus berupa angka bulat",
+        "number.min": "Halaman buku minimal 1",
+        "number.max":
+          "Halaman maksimal buku Gharib adalah 45. Jika santri sudah melewati halaman 45, naikkan tahapan melalui Ujian Kenaikan",
+      }),
+    otherwise: Joi.number()
+      .integer()
+      .min(1)
+      .max(40)
+      .allow(null)
+      .optional()
+      .messages({
+        "number.base": "Halaman buku harus berupa angka",
+        "number.integer": "Halaman buku harus berupa angka bulat",
+        "number.min": "Halaman buku minimal 1",
+        "number.max":
+          "Halaman maksimal jilid/buku adalah 40. Jika santri sudah melewati halaman 40, naikkan tahapan melalui Ujian Kenaikan",
+      }),
+  }),
 
   nilai: Joi.string()
     .valid("A+", "A", "B+", "B", "B-", "C+", "C", "C-", "D")
@@ -60,7 +89,36 @@ const pretestValidation = Joi.object({
     )
     .required(),
   jilid: Joi.number().allow(null).optional(),
-  halaman: Joi.number().allow(null).optional(),
+  // Batas "Halaman Terakhir Dibaca" sesuai kurikulum: Jilid 1-6 & Tajwid = 40, Gharib = 45
+  halaman: Joi.when("tahapan", {
+    is: "GHARIB",
+    then: Joi.number()
+      .integer()
+      .min(1)
+      .max(45)
+      .allow(null)
+      .optional()
+      .messages({
+        "number.base": "Halaman harus berupa angka",
+        "number.integer": "Halaman harus berupa angka bulat",
+        "number.min": "Halaman minimal 1",
+        "number.max":
+          "Halaman maksimal buku Gharib adalah 45. Jika santri sudah melewati halaman 45, tempatkan di tahapan berikutnya",
+      }),
+    otherwise: Joi.number()
+      .integer()
+      .min(1)
+      .max(40)
+      .allow(null)
+      .optional()
+      .messages({
+        "number.base": "Halaman harus berupa angka",
+        "number.integer": "Halaman harus berupa angka bulat",
+        "number.min": "Halaman minimal 1",
+        "number.max":
+          "Halaman maksimal jilid/buku adalah 40. Jika santri sudah melewati halaman 40, tempatkan di tahapan berikutnya",
+      }),
+  }),
   no_surah: Joi.number().allow(null).optional(),
   ayat_awal: Joi.number().allow(null).optional(),
   ayat_akhir: Joi.number().allow(null).optional(),
