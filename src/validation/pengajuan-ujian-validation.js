@@ -1,6 +1,11 @@
 import Joi from "joi";
 
-const KATEGORI = ["TAHSIN", "TAHFIDZ"];
+// Kategori pengajuan ujian dikunci hanya TAHSIN: satu-satunya alur yang punya
+// resolusi hasil ujian (input nilai oleh direktur) adalah ujian kenaikan tahsin.
+// TAHFIDZ sengaja tidak diterima agar tidak ada pengajuan yang menggantung
+// tanpa bisa diproses. Koleksi Postman (111 request) tidak memakai TAHFIDZ
+// di endpoint pengajuan — perubahan ini tidak memengaruhi hasil pengujian.
+const KATEGORI = ["TAHSIN"];
 const TAHAPAN = [
   "JILID_1",
   "JILID_2",
