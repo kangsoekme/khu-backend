@@ -42,6 +42,23 @@ const validasiAyatSurah = async (noSurah, ayatAwal, ayatAkhir, label) => {
   }
 };
 
+// Target penyelesaian tahapan berbasis BUKU (syarat ujian kenaikan).
+// Harus tetap sinkron dengan frontend: khu-frontend/src/utils/tahsinCompletion.js (TARGET_BUKU).
+const TARGET_BUKU_TAHAPAN = {
+  JILID_1: 40,
+  JILID_2: 40,
+  JILID_3: 40,
+  JILID_4: 40,
+  JILID_5: 40,
+  JILID_6: 40,
+  GHARIB: 45,
+  TAJWID: 40,
+};
+
+// Titik selesai Tilawah Juz 1-5 (akhir Juz 5): Surah 4 (An-Nisa) ayat 147.
+// Ayat 148+ An-Nisa sudah masuk wilayah Juz 6 (bahan tahap Gharib).
+const TARGET_TILAWAH_JUZ_1_5 = { no_surah: 4, ayat: 147 };
+
 const addTahsin = async (request) => {
   const tahsin = validate(tahsinValidation, request);
 
@@ -141,7 +158,54 @@ const addPretest = async (request) => {
     );
   }
 
+  // Placement adalah TITIK AWAL bacaan -> tolak jika titiknya sudah setara
+  // syarat selesai tahapan, karena itu membuat siswa instan "selesai tahapan"
+  // tanpa satu setoran riil pun dan langsung bisa mengajukan ujian kenaikan.
+  if (pretest.tahapan === "MUNAQOSYAH") {
+    throw new ResponseError(
+      400,
+      "Munaqosyah adalah tahap ujian akhir — dimasuki melalui ujian kenaikan, bukan placement pretest",
+    );
+  }
+
+  const targetBuku = TARGET_BUKU_TAHAPAN[pretest.tahapan];
+  if (
+    targetBuku &&
+    pretest.halaman != null &&
+    Number(pretest.halaman) >= targetBuku
+  ) {
+    throw new ResponseError(
+      400,
+      `Placement adalah titik awal bacaan — halaman ${pretest.halaman} sudah setara titik selesai tahapan (halaman ${targetBuku}). Tempatkan santri langsung di tahapan berikutnya`,
+    );
+  }
+
+  if (pretest.tahapan === "TILAWAH_JUZ_1_5" && pretest.no_surah) {
+    const noSurah = Number(pretest.no_surah);
+    const ayatAkhir = Number(pretest.ayat_akhir) || 0;
+    if (
+      noSurah > TARGET_TILAWAH_JUZ_1_5.no_surah ||
+      (noSurah === TARGET_TILAWAH_JUZ_1_5.no_surah &&
+        ayatAkhir >= TARGET_TILAWAH_JUZ_1_5.ayat)
+    ) {
+      throw new ResponseError(
+        400,
+        `Placement adalah titik awal bacaan — Surah 4 ayat ${TARGET_TILAWAH_JUZ_1_5.ayat} adalah titik selesai Tilawah Juz 1-5. Tempatkan santri langsung di tahapan berikutnya (Gharib)`,
+      );
+    }
+  }
+
   const [hasilPretest] = await prismaClient.$transaction([
+    // Placement bersifat KOREKSI: hapus placement lama siswa agar re-pretest
+    // tidak menumpuk baris "Titik awal placement pretest" di riwayat
+    // (selalu maksimal satu baris placement aktif per siswa).
+    prismaClient.setoran_Tahsin.deleteMany({
+      where: {
+        nis_siswa: pretest.nis_siswa,
+        is_placement: true,
+      },
+    }),
+
     prismaClient.ujian_Pretest.create({
       data: {
         nis_siswa: pretest.nis_siswa,
