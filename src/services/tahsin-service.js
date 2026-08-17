@@ -1,6 +1,7 @@
 import {
   pretestValidation,
   tahsinValidation,
+  editTahsinValidation,
 } from "../validation/tahsin-validation.js";
 import { prismaClient } from "../application/database.js";
 import { ResponseError } from "../error/response-error.js";
@@ -384,9 +385,60 @@ const editTahsin = async (id, request) => {
   });
   if (!setoran) throw new ResponseError(404, "Data setoran tidak ditemukan");
 
+  // Baris placement adalah penanda titik awal sintetis, bukan setoran riil —
+  // tidak boleh diedit. Koreksinya lewat hapus placement + input ulang pretest.
+  if (setoran.is_placement) {
+    throw new ResponseError(
+      400,
+      "Baris placement pretest tidak dapat diedit — hapus dan input ulang pretest untuk koreksi",
+    );
+  }
+
+  // Payload divalidasi dengan skema ketat: hanya field yang boleh berubah.
+  // Identitas baris (halaqoh, tahapan, is_placement) ditolak skema,
+  // bukan lagi body mentah seperti sebelumnya.
+  const data = validate(editTahsinValidation, request);
+
+  // Cross-check ayat bacaan & hafalan terhadap jumlah ayat surah (paritas addTahsin)
+  if (data.no_surah) {
+    await validasiAyatSurah(
+      data.no_surah,
+      data.ayat_awal ?? setoran.ayat_awal,
+      data.ayat_akhir ?? setoran.ayat_akhir,
+      "bacaan",
+    );
+  }
+  if (data.hafalan_surah) {
+    await validasiAyatSurah(
+      data.hafalan_surah,
+      data.hafalan_ayat_awal ?? setoran.hafalan_ayat_awal,
+      data.hafalan_ayat_akhir ?? setoran.hafalan_ayat_akhir,
+      "hafalan",
+    );
+  }
+
+  // Cross-check halaman buku terhadap target tahapan baris (paritas addTahsin).
+  // Skema edit hanya tahu batas tebal buku (45); batas per-tahapan (Jilid/Tajwid
+  // 40, Gharib 45) dicek di sini karena tahapan baris hanya ada di DB.
+  const targetBuku = TARGET_BUKU_TAHAPAN[setoran.tahapan];
+  if (targetBuku && data.bab != null && data.bab > targetBuku) {
+    throw new ResponseError(
+      400,
+      `Halaman maksimal tahapan ${setoran.tahapan} adalah ${targetBuku}. Jika santri sudah melewati halaman ${targetBuku}, naikkan tahapan melalui Ujian Kenaikan`,
+    );
+  }
+
+  // Nilai diubah tanpa status eksplisit -> hitung ulang status kelanjutan
+  // (paritas addTahsin; sebelumnya edit tidak pernah menghitung ulang).
+  if (data.nilai && !data.status_kelanjutan) {
+    data.status_kelanjutan = ["A+", "A", "B+", "B"].includes(data.nilai)
+      ? "LANJUT"
+      : "MENGULANG";
+  }
+
   return await prismaClient.setoran_Tahsin.update({
     where: { id },
-    data: request,
+    data,
   });
 };
 

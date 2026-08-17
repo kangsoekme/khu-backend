@@ -71,6 +71,40 @@ const tahsinValidation = Joi.object({
   status_kelanjutan: Joi.string().valid("LANJUT", "MENGULANG").optional(),
 });
 
+// Skema EDIT setoran: hanya field yang boleh berubah. Identitas baris
+// (nis_siswa, halaqohId/id_kelompok, tahapan, is_placement) bersifat immutable —
+// validate() memakai allowUnknown:false sehingga field tersebut otomatis
+// ditolak bila dikirim (menutup injeksi semisal is_placement:false).
+const editTahsinValidation = Joi.object({
+  nilai: Joi.string()
+    .valid("A+", "A", "B+", "B", "B-", "C+", "C", "C-", "D")
+    .optional(),
+  keterangan: Joi.string().allow("", null).optional(),
+  status_kelanjutan: Joi.string().valid("LANJUT", "MENGULANG").optional(),
+  jilid: Joi.number().min(0).allow(null).optional(),
+  // Batas gabungan buku tebal (Gharib 45); batas per-tahapan ditegakkan form
+  bab: Joi.number()
+    .integer()
+    .min(1)
+    .max(45)
+    .allow(null)
+    .optional()
+    .messages({
+      "number.base": "Halaman buku harus berupa angka",
+      "number.integer": "Halaman buku harus berupa angka bulat",
+      "number.min": "Halaman minimal 1",
+      "number.max":
+        "Halaman maksimal buku adalah 45 (Gharib) / 40 (jilid & Tajwid)",
+    }),
+  no_surah: Joi.number().min(1).max(114).allow(null).optional(),
+  ayat_awal: Joi.number().min(0).max(286).optional(),
+  ayat_akhir: Joi.number().min(0).max(286).optional(),
+  materi: Joi.string().allow("", null).optional(),
+  hafalan_surah: Joi.number().min(0).max(114).allow(null).optional(),
+  hafalan_ayat_awal: Joi.number().min(0).max(286).allow(null).optional(),
+  hafalan_ayat_akhir: Joi.number().min(0).max(286).allow(null).optional(),
+});
+
 const pretestValidation = Joi.object({
   nis_siswa: Joi.string().required(),
   keterangan: Joi.string().allow("", null).optional(),
@@ -127,4 +161,4 @@ const pretestValidation = Joi.object({
   materi: Joi.string().allow("", null).optional(),
 }).unknown(true);
 
-export { tahsinValidation, pretestValidation };
+export { tahsinValidation, pretestValidation, editTahsinValidation };
