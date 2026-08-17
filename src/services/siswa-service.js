@@ -287,7 +287,9 @@ const getAllSiswa = async (page = 1, limit = 10, search = "") => {
           bab: true,
           materi: true,
           no_surah: true,
+          ayat_awal: true,
           ayat_akhir: true,
+          is_placement: true,
           tahapan: true,
           surah: {
             select: {
@@ -377,7 +379,9 @@ const getSiswa = async (nis) => {
           bab: true,
           materi: true,
           no_surah: true,
+          ayat_awal: true,
           ayat_akhir: true,
+          is_placement: true,
           tahapan: true,
           surah: {
             select: {
@@ -474,7 +478,9 @@ const getWaitingPretest = async () => {
           bab: true,
           materi: true,
           no_surah: true,
+          ayat_awal: true,
           ayat_akhir: true,
+          is_placement: true,
           tahapan: true,
           surah: { select: { nama_surah: true } },
         },
@@ -551,7 +557,9 @@ const getWaitingHalaqoh = async (kategori) => {
           bab: true,
           materi: true,
           no_surah: true,
+          ayat_awal: true,
           ayat_akhir: true,
+          is_placement: true,
           tahapan: true,
           surah: { select: { nama_surah: true } },
         },
