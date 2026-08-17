@@ -60,6 +60,21 @@ const TARGET_BUKU_TAHAPAN = {
 // Ayat 148+ An-Nisa sudah masuk wilayah Juz 6 (bahan tahap Gharib).
 const TARGET_TILAWAH_JUZ_1_5 = { no_surah: 4, ayat: 147 };
 
+// Urutan satu arah tahapan tahsin. Harus sinkron dengan enum Tahapan
+// di prisma/schema.prisma — dipakai guard arah setoran & kenaikan.
+const URUTAN_TAHAPAN = [
+  "JILID_1",
+  "JILID_2",
+  "JILID_3",
+  "JILID_4",
+  "JILID_5",
+  "JILID_6",
+  "TILAWAH_JUZ_1_5",
+  "GHARIB",
+  "TAJWID",
+  "MUNAQOSYAH",
+];
+
 const addTahsin = async (request) => {
   const tahsin = validate(tahsinValidation, request);
 
@@ -77,6 +92,19 @@ const addTahsin = async (request) => {
 
   if (!halaqoh) {
     throw new ResponseError(404, "Halaqoh tidak ditemukan");
+  }
+
+  // K2: setoran tidak boleh MUNDUR tahapan. Contoh: siswa sudah TILAWAH
+  // lalu tercatat setoran JILID_1 -> riwayat tercampur dan (sebelum fix)
+  // side-effect di bawah menurunkan tahapan siswa diam-diam. Tahapan siswa
+  // hanya berubah lewat placement pretest & ujian kenaikan (LULUS).
+  const idxSekarang = URUTAN_TAHAPAN.indexOf(siswa.tahapan_tahsin);
+  const idxSetoran = URUTAN_TAHAPAN.indexOf(tahsin.tahapan);
+  if (idxSekarang !== -1 && idxSetoran < idxSekarang) {
+    throw new ResponseError(
+      400,
+      `Siswa sudah berada di tahapan ${siswa.tahapan_tahsin} — tidak bisa mencatat setoran ${tahsin.tahapan} (setoran tidak boleh mundur tahapan)`,
+    );
   }
 
   // Cross-check ayat bacaan & hafalan terhadap jumlah ayat surah
@@ -130,10 +158,17 @@ const addTahsin = async (request) => {
         halaqoh: { select: { nama: true } },
       },
     }),
-    prismaClient.siswa.update({
-      where: { nis: tahsin.nis_siswa },
-      data: { tahapan_tahsin: tahsin.tahapan },
-    }),
+    // Bootstrap saja: siswa yang belum pernah pretest (tahapan null) mendapat
+    // tahapan dari setoran pertamanya. Siswa yang SUDAH punya tahapan tidak
+    // diubah di sini — kenaikan tahapan resmi hanya lewat ujian kenaikan.
+    ...(siswa.tahapan_tahsin == null
+      ? [
+          prismaClient.siswa.update({
+            where: { nis: tahsin.nis_siswa },
+            data: { tahapan_tahsin: tahsin.tahapan },
+          }),
+        ]
+      : []),
   ]);
 
   return setoran;
@@ -262,9 +297,9 @@ const getRiwayatTahsin = async (nis) => {
     where: { nis: nis },
     include: {
       setoranTahsin: {
-        orderBy: {
-          timestamp: "desc",
-        },
+        // Tie-breaker id: beberapa setoran dalam detik yang sama (mis. saat
+        // pengujian beruntun) urutannya stabil mengikuti urutan input.
+        orderBy: [{ timestamp: "desc" }, { id: "desc" }],
         include: {
           surah: {
             select: {
@@ -458,3 +493,5 @@ export default {
   editTahsin,
   deleteTahsin,
 };
+
+export { URUTAN_TAHAPAN, TARGET_BUKU_TAHAPAN, TARGET_TILAWAH_JUZ_1_5 };

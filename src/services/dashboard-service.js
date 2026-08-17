@@ -33,7 +33,9 @@ const getSuperAdminDashboard = async () => {
       select: { timestamp: true },
     }),
     prismaClient.setoran_Tahsin.findMany({
-      where: { timestamp: { gte: tujuhHariLalu } },
+      // Placement pretest bukan setoran riil — jangan menggelembungkan
+      // grafik perkembangan 7 hari.
+      where: { timestamp: { gte: tujuhHariLalu }, is_placement: false },
       select: { timestamp: true },
     }),
     prismaClient.siswa.findMany({
@@ -148,7 +150,12 @@ const getGuruDashboard = async (userId) => {
     prismaClient.siswa.count({ where: { halaqoh_tahsin_id: { in: allHalaqohId } } }),
     prismaClient.siswa.count({ where: { halaqoh_tahfidz_id: { in: allHalaqohId } } }),
     prismaClient.setoran_Tahsin.findMany({
-      where: { id_kelompok: { in: allHalaqohId }, timestamp: { gte: tujuhHariLalu } },
+      // Placement pretest dikecualikan dari chart perkembangan guru.
+      where: {
+        id_kelompok: { in: allHalaqohId },
+        timestamp: { gte: tujuhHariLalu },
+        is_placement: false,
+      },
       select: { timestamp: true },
     }),
     prismaClient.setoran_Hafalan.findMany({
@@ -208,7 +215,13 @@ const getDirekturDashboard = async () => {
     prismaClient.siswa.count({ where: { jenis_kelamin: "LAKI_LAKI" } }),
     prismaClient.siswa.count({ where: { jenis_kelamin: "PEREMPUAN" } }),
     prismaClient.setoran_Hafalan.groupBy({ by: ["predikat"], _count: { predikat: true } }),
-    prismaClient.setoran_Tahsin.groupBy({ by: ["nilai"], _count: { nilai: true } }),
+    // Placement pretest dikecualikan: nilai "A+" placement akan menggelembungkan
+    // slice A+ di chart distribusi nilai tahsin direktur.
+    prismaClient.setoran_Tahsin.groupBy({
+      by: ["nilai"],
+      where: { is_placement: false },
+      _count: { nilai: true },
+    }),
     prismaClient.pengajuan_Ujian.count(),
     prismaClient.setoran_Tahsin.count({ where: { status_kelanjutan: "MENGULANG" } }),
     prismaClient.halaqoh.findMany({
@@ -225,7 +238,8 @@ const getDirekturDashboard = async () => {
       select: { timestamp: true },
     }),
     prismaClient.setoran_Tahsin.findMany({
-      where: { timestamp: { gte: tujuhHariLalu } },
+      // Placement pretest dikecualikan dari chart perkembangan direktur.
+      where: { timestamp: { gte: tujuhHariLalu }, is_placement: false },
       select: { timestamp: true },
     }),
   ]);

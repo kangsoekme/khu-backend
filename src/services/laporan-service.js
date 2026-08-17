@@ -10,7 +10,7 @@ const getLaporanTahfidz = async () => {
           nis: true,
           nama: true,
           setoranHafalan: {
-            orderBy: { timestamp: "desc" },
+            orderBy: [{ timestamp: "desc" }, { id: "desc" }],
             take: 1,
             select: { predikat: true, rata_rata: true, timestamp: true },
           },
@@ -51,7 +51,10 @@ const getLaporanTahsin = async () => {
           nis: true,
           nama: true,
           setoranTahsin: {
-            orderBy: { timestamp: "desc" },
+            // Placement pretest bukan setoran riil (nilai "A+" hanya
+            // placeholder) — jangan tampil sebagai "Nilai Terakhir" di laporan.
+            where: { is_placement: false },
+            orderBy: [{ timestamp: "desc" }, { id: "desc" }],
             take: 1,
             select: { nilai: true, keterangan: true, timestamp: true },
           },
@@ -93,7 +96,7 @@ const getLaporanGuruTahfidz = async (userId) => {
           nama: true,
           riwayatKelas: { select: { nama_kelas: true } },
           setoranHafalan: {
-            orderBy: { timestamp: "desc" },
+            orderBy: [{ timestamp: "desc" }, { id: "desc" }],
             select: {
               predikat: true,
               rata_rata: true,
@@ -119,13 +122,19 @@ const getLaporanGuruTahsin = async (userId) => {
           nama: true,
           riwayatKelas: { select: { nama_kelas: true } },
           setoranTahsin: {
-            orderBy: { timestamp: "desc" },
+            // Placement dikecualikan dari riwayat setoran riil (paritas
+            // laporan direktur); id sebagai tie-breaker urutan stabil.
+            where: { is_placement: false },
+            orderBy: [{ timestamp: "desc" }, { id: "desc" }],
             select: {
               nilai: true,
               keterangan: true,
               timestamp: true,
               tahapan: true,
               jilid: true,
+              bab: true,
+              no_surah: true,
+              ayat_akhir: true,
             },
           },
         },
