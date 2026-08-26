@@ -1,5 +1,11 @@
 import exportService from "../services/export-service.js";
 
+// Tanggal "hari ini" zona WIB (UTC+7) format YYYY-MM-DD untuk nama file.
+// Sebelumnya memakai toISOString (UTC) sehingga nama file bisa mundur
+// sehari dibanding tanggal lokal Indonesia.
+const jakartaToday = () =>
+  new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().split("T")[0];
+
 const exportJamai = async (req, res, next) => {
   try {
     const kategori = req.query.kategori || "kelas";
@@ -14,10 +20,9 @@ const exportJamai = async (req, res, next) => {
       req.user,
     );
 
-    const tanggal = new Date().toISOString().split("T")[0];
     const infoPeriode =
       periode === "bulanan" && bulan ? `_BULANAN_${bulan}` : `_SEMESTERAN`;
-    const fileName = `Laporan_Jamai_${kategori.toUpperCase()}${infoPeriode}_${tanggal}.xlsx`;
+    const fileName = `Laporan_Jamai_${kategori.toUpperCase()}${infoPeriode}_${jakartaToday()}.xlsx`;
 
     res.setHeader(
       "Content-Type",
@@ -34,7 +39,7 @@ const exportJamai = async (req, res, next) => {
 const exportIndividual = async (req, res, next) => {
   try {
     const nis = req.params.nis;
-    
+
     if (req.user.role === "WALI" && req.user.nis !== nis) {
       return res.status(403).json({
         status: "error",
@@ -44,7 +49,7 @@ const exportIndividual = async (req, res, next) => {
 
     const excelBuffer = await exportService.generateIndividualReport(nis);
 
-    const fileName = `Rapor_Individual_${nis}.xlsx`;
+    const fileName = `Rapor_Individual_${nis}_${jakartaToday()}.xlsx`;
 
     res.setHeader(
       "Content-Type",
@@ -61,14 +66,17 @@ const exportIndividual = async (req, res, next) => {
 const exportHalaqoh = async (req, res, next) => {
   try {
     const kategori = req.query.kategori || "TAHSIN";
-    const excelBuffer = await exportService.exportHalaqohDistribution(kategori);
-    const fileName = `Pembagian_Kelompok_${kategori}_2024_2025.xlsx`;
+    const { buffer, labelPeriode } =
+      await exportService.exportHalaqohDistribution(kategori);
+    // labelPeriode diambil dari tahun akademik AKTIF (cth. "GANJIL_2025-2026"),
+    // bukan hardcode "2024_2025" seperti sebelumnya yang basi tiap tahun.
+    const fileName = `Pembagian_Kelompok_${kategori.toUpperCase()}_${labelPeriode || jakartaToday()}.xlsx`;
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
     res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
-    res.status(200).send(excelBuffer);
+    res.status(200).send(buffer);
   } catch (error) {
     next(error);
   }
@@ -77,8 +85,7 @@ const exportHalaqoh = async (req, res, next) => {
 const exportLaporanUmmiWord = async (req, res, next) => {
   try {
     const wordBuffer = await exportService.generateWordLaporanUmmi();
-    const tanggal = new Date().toISOString().split("T")[0];
-    const fileName = `Laporan_Perkembangan_Ummi_${tanggal}.docx`;
+    const fileName = `Laporan_Perkembangan_Ummi_${jakartaToday()}.docx`;
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -93,7 +100,7 @@ const exportLaporanUmmiWord = async (req, res, next) => {
 const exportIndividualWord = async (req, res, next) => {
   try {
     const nis = req.params.nis;
-    
+
     if (req.user.role === "WALI" && req.user.nis !== nis) {
       return res.status(403).json({
         status: "error",
@@ -102,7 +109,7 @@ const exportIndividualWord = async (req, res, next) => {
     }
 
     const wordBuffer = await exportService.generateWordRapor(nis);
-    const fileName = `Rapor_Individual_${nis}.docx`;
+    const fileName = `Rapor_Individual_${nis}_${jakartaToday()}.docx`;
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -117,8 +124,7 @@ const exportIndividualWord = async (req, res, next) => {
 const exportMunaqosyah = async (req, res, next) => {
   try {
     const excelBuffer = await exportService.exportMunaqosyah();
-    const tanggal = new Date().toISOString().split("T")[0];
-    const fileName = `Data_Pengajuan_Munaqosyah_${tanggal}.xlsx`;
+    const fileName = `Data_Pengajuan_Munaqosyah_${jakartaToday()}.xlsx`;
 
     res.setHeader(
       "Content-Type",

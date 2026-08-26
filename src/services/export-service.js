@@ -93,37 +93,68 @@ const formatTahapan = (val) => {
   };
   return map[val] || val.replace(/_/g, " ");
 };
-const filterSetoranByAcademicYear = (siswa, list = []) => {
+// Rentang semester dalam WIB (UTC+7), diturunkan dari nama_tahun akademik
+// (contoh: "2025/2026 GANJIL"):
+// - GANJIL : 1 Juli tahun mulai   s.d. 31 Desember tahun mulai
+// - GENAP  : 1 Januari tahun akhir s.d. 30 Juni tahun akhir
+// Tanpa label semester: satu tahun ajaran penuh (1 Juli - 30 Juni).
+const getSemesterRange = (namaTahun = "") => {
+  const m = String(namaTahun).match(
+    /(\d{4})\s*\/\s*(\d{4})(?:\s*(GANJIL|GENAP))?/i,
+  );
+  if (!m) return null;
+  const awal = parseInt(m[1], 10);
+  const akhir = parseInt(m[2], 10);
+  const sem = (m[3] || "").toUpperCase();
+
+  if (sem === "GENAP") {
+    return {
+      start: new Date(`${akhir}-01-01T00:00:00+07:00`),
+      end: new Date(`${akhir}-06-30T23:59:59+07:00`),
+    };
+  }
+  if (sem === "GANJIL") {
+    return {
+      start: new Date(`${awal}-07-01T00:00:00+07:00`),
+      end: new Date(`${awal}-12-31T23:59:59+07:00`),
+    };
+  }
+  return {
+    start: new Date(`${awal}-07-01T00:00:00+07:00`),
+    end: new Date(`${akhir}-06-30T23:59:59+07:00`),
+  };
+};
+
+const filterSetoranByAcademicYear = (siswa, list = [], periode = "semester") => {
   if (!list || list.length === 0) return list;
 
-  // 1. Coba ambil tahun dari nama_tahun (contoh: "2025/2026 Ganjil" → 2025)
+  // 1. Coba ambil tahun dari nama_tahun (contoh: "2025/2026 Ganjil")
   const namaTahun = siswa?.riwayatKelas?.[0]?.tahun_akademik?.nama_tahun || "";
-  const matchTahun = namaTahun.match(/(\d{4})/);
+  const range = getSemesterRange(namaTahun);
 
-  let academicStartDate = null;
+  // Tidak ada relasi tahun akademik: jangan filter, tampilkan semua setoran
+  if (!range) return list;
 
-  if (matchTahun && !isNaN(parseInt(matchTahun[1]))) {
-    const startYear = parseInt(matchTahun[1]);
-    // Gunakan WIB (UTC+7): 1 Juli tahun = 30 Juni jam 17:00 UTC sehari sebelumnya
-    academicStartDate = new Date(`${startYear}-06-30T17:00:00.000Z`);
-  } else {
-    // Tidak ada relasi tahun akademik: jangan filter, tampilkan semua setoran
-    return list;
-  }
+  // Mode bulanan: user sudah memilih bulan secara eksplisit — cukup batasi
+  // ke tahun ajaran (tanpa batas akhir semester) agar bulan di semester
+  // manapun dalam tahun ajaran yang sama tetap bisa diunduh.
+  const start = range.start;
+  const end = periode === "bulanan" ? null : range.end;
 
-  const filtered = list.filter(item => {
+  // Catatan: TANPA fallback "tampilkan semua" lagi. Jika siswa memang tidak
+  // punya setoran pada periode ini, laporan jujur menampilkan kosong —
+  // setoran semester/tahun lalu tidak boleh muncul sebagai capaian kini.
+  return list.filter((item) => {
     if (!item.timestamp) return false;
-    return new Date(item.timestamp) >= academicStartDate;
+    const t = new Date(item.timestamp);
+    return t >= start && (end === null || t <= end);
   });
-
-  // Fallback: jika filter menghasilkan kosong, kembalikan SEMUA data (jangan tampilkan kosong)
-  return filtered.length > 0 ? filtered : list;
 };
 
 const computeCapaianSiswa = (siswa, periode = "semester") => {
   // Kecualikan setoran placement (ujian pretest) dari tampilan laporan
   const allTahsin = (siswa.setoranTahsin || []).filter(s => !s.is_placement);
-  const tahsinList = filterSetoranByAcademicYear(siswa, allTahsin);
+  const tahsinList = filterSetoranByAcademicYear(siswa, allTahsin, periode);
   let awalJilidTahsin = "-";
   let awalHalTahsin = "-";
   let capaianJilidTahsin = "-";
@@ -167,7 +198,11 @@ const computeCapaianSiswa = (siswa, periode = "semester") => {
     deskripsiTahsin = periode === "bulanan" ? `Belum ada setoran tilawah bulan ini` : `Belum ada setoran tilawah semester ini`;
   }
 
-  const tahfidzList = filterSetoranByAcademicYear(siswa, siswa.setoranHafalan || []);
+  const tahfidzList = filterSetoranByAcademicYear(
+    siswa,
+    siswa.setoranHafalan || [],
+    periode,
+  );
   let awalSurahTahfidz = "-";
   let awalAyatTahfidz = "-";
   let capaianSurahTahfidz = "-";
@@ -200,6 +235,10 @@ const computeCapaianSiswa = (siswa, periode = "semester") => {
   }
 
   return {
+    // Jumlah setoran dipakai konsumer (rapor Word) untuk memutuskan narasi
+    // "sudah ada capaian" vs "belum ada setoran semester ini".
+    jumlahSetoranTahsin: tahsinList.length,
+    jumlahSetoranTahfidz: tahfidzList.length,
     awalJilidTahsin,
     awalHalTahsin,
     capaianJilidTahsin,
@@ -347,7 +386,7 @@ const buildIndividualSheet = (workbook, dataSiswa) => {
   const sheet = workbook.addWorksheet("Laporan Individual");
   let r = 1; // Variabel penunjuk baris (row)
 
-  dataSiswa.forEach((siswa, index) => {
+  dataSiswa.forEach((siswa) => {
     // === 1. JUDUL RAPOR ===
     sheet.mergeCells(`A${r}:I${r}`);
     sheet.getCell(`A${r}`).value = "LAPORAN HASIL BELAJAR";
@@ -355,12 +394,18 @@ const buildIndividualSheet = (workbook, dataSiswa) => {
     sheet.getCell(`A${r}`).alignment = { horizontal: "center" };
     r++;
 
-    const namaTahun = siswa.riwayatKelas?.[0]?.tahun_akademik?.nama_tahun || "2026/2027";
-    const semesterStr = namaTahun.toUpperCase().includes("GANJIL") ? "GANJIL" : (namaTahun.toUpperCase().includes("GENAP") ? "GENAP" : "");
-    const tahunStr = namaTahun.replace(/ganjil|genap/gi, "").trim();
-    
+    // Jangan hardcode tahun ajaran default — jika relasi tahun akademik
+    // tidak ada, tampilkan "-" (lebih jujur daripada tahun palsu).
+    const namaTahun = siswa.riwayatKelas?.[0]?.tahun_akademik?.nama_tahun || "";
+    const semesterStr = namaTahun.toUpperCase().includes("GANJIL")
+      ? "GANJIL"
+      : namaTahun.toUpperCase().includes("GENAP")
+        ? "GENAP"
+        : "";
+    const tahunStr = namaTahun.replace(/ganjil|genap/gi, "").trim() || "-";
+
     sheet.mergeCells(`A${r}:I${r}`);
-    sheet.getCell(`A${r}`).value = `SEMESTER ${semesterStr} TAHUN AJARAN ${tahunStr}`.trim();
+    sheet.getCell(`A${r}`).value = `${semesterStr ? `SEMESTER ${semesterStr} ` : ""}TAHUN AJARAN ${tahunStr}`;
     sheet.getCell(`A${r}`).font = { bold: true, size: 12 };
     sheet.getCell(`A${r}`).alignment = { horizontal: "center" };
     r += 2; // Lompat 1 baris kosong
@@ -376,7 +421,9 @@ const buildIndividualSheet = (workbook, dataSiswa) => {
     sheet.getCell(`B${r}`).value =
       `: ${siswa.riwayatKelas?.[0]?.nama_kelas || "-"}`;
     sheet.getCell(`E${r}:F${r}`).value = "NO. PRESENSI";
-    sheet.getCell(`G${r}`).value = `: ${index + 1}`;
+    // No. presensi asli tidak tersimpan di database — jangan fabrikasi dari
+    // urutan loop; tampilkan "-" hingga datanya benar-benar ada.
+    sheet.getCell(`G${r}`).value = ": -";
     r += 2;
 
     sheet.mergeCells(`A${r}:I${r}`);
@@ -595,6 +642,46 @@ const generateJamaiReport = async (kategori, periode = "semester", bulan = "", u
     });
   }
 
+  // === SHEET INFO (halaman depan / "kop digital") ===
+  // Sheet kolektif tidak memuat identitas periode — beri satu sheet INFO
+  // berisi lembaga, tahun ajaran aktif, periode, dan tanggal cetak agar
+  // file tetap punya konteks saat dicetak/diarsipkan.
+  const tahunAktif = await prismaClient.tahun_Akademik.findFirst({
+    where: { is_active: true },
+  });
+  const infoSheet = workbook.addWorksheet("INFO");
+  infoSheet.mergeCells("A1:B1");
+  infoSheet.getCell("A1").value = "LAPORAN JAMAI — SDI KHOIRU UMMAH SURABAYA";
+  infoSheet.getCell("A1").font = { bold: true, size: 13 };
+  infoSheet.getCell("A1").alignment = { horizontal: "center" };
+  const infoRows = [
+    ["Jenis Laporan", kategori === "kelas" ? "Rekap per Kelas" : "Rekap per Halaqoh"],
+    ["Tahun Ajaran Aktif", tahunAktif?.nama_tahun || "-"],
+    [
+      "Periode",
+      periode === "bulanan"
+        ? `Bulanan (${bulan})`
+        : `Semester (${tahunAktif?.nama_tahun || "-"})`,
+    ],
+    ["Cakupan Data", "Seluruh setoran pada periode di atas"],
+    [
+      "Tanggal Cetak",
+      new Date().toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: "Asia/Jakarta",
+      }),
+    ],
+    ["Dicetak Oleh", user ? `${user.nama} (${user.role})` : "-"],
+  ];
+  infoRows.forEach(([label, nilai]) => {
+    const row = infoSheet.addRow([label, nilai]);
+    row.getCell(1).font = { bold: true };
+  });
+  infoSheet.getColumn("A").width = 22;
+  infoSheet.getColumn("B").width = 42;
+
   if (kategori === "kelas") {
     const groupedByKelas = {};
     allSiswa.forEach((siswa) => {
@@ -610,7 +697,9 @@ const generateJamaiReport = async (kategori, periode = "semester", bulan = "", u
       buildKolektifSheet(workbook, `Kelas ${validSheetName}`, siswaList, periode, bulan);
     }
 
-    buildIndividualSheet(workbook, allSiswa);
+    // Sheet "Laporan Individual" untuk SEMUA siswa dihapus dari export kelas —
+    // rapor per siswa sudah punya jalurnya sendiri (export/individual) sehingga
+    // file kolektif tidak lagi membawa ratusan rapor dalam satu sheet.
   } else {
     const groupedByTahsin = {};
     const groupedByTahfidz = {};
@@ -678,6 +767,17 @@ const generateIndividualReport = async (nis) => {
 // Di dalam BACKEND/src/services/export-service.js
 
 const exportHalaqohDistribution = async (kategori = "TAHSIN") => {
+  // Label periode dari tahun akademik AKTIF (bukan hardcode 2024-2025).
+  const tahunAktif = await prismaClient.tahun_Akademik.findFirst({
+    where: { is_active: true },
+  });
+  const mTahun = String(tahunAktif?.nama_tahun || "").match(
+    /(\d{4})\s*\/\s*(\d{4})(?:\s*(GANJIL|GENAP))?/i,
+  );
+  const labelPeriode = mTahun
+    ? `${mTahun[3] ? `${mTahun[3].toUpperCase()}_` : ""}${mTahun[1]}-${mTahun[2]}`
+    : "";
+
   // 1. Ambil data halaqoh beserta guru dan siswa + riwayat setorannya
   const daftarHalaqoh = await prismaClient.halaqoh.findMany({
     where: { kategori: kategori },
@@ -705,7 +805,7 @@ const exportHalaqohDistribution = async (kategori = "TAHSIN") => {
   // 2. Judul Utama
   sheet.mergeCells("A1:F1");
   const titleCell = sheet.getCell("A1");
-  titleCell.value = `PEMBAGIAN KELOMPOK ${kategori === "TAHSIN" ? "UMMI" : "TAHFIDZ"} SMT GANJIL 2024-2025`;
+  titleCell.value = `PEMBAGIAN KELOMPOK ${kategori === "TAHSIN" ? "UMMI" : "TAHFIDZ"}${labelPeriode ? ` SMT ${labelPeriode.replace("_", " ")}` : ""}`;
   titleCell.font = { name: "Arial", size: 14, bold: true };
   titleCell.alignment = { horizontal: "center" };
   sheet.addRow([]); // Spasi baris 2
@@ -820,7 +920,10 @@ const exportHalaqohDistribution = async (kategori = "TAHSIN") => {
     { width: 12 }, // Ket
   ];
 
-  return workbook.xlsx.writeBuffer();
+  return {
+    buffer: await workbook.xlsx.writeBuffer(),
+    labelPeriode,
+  };
 };
 
 const generateWordLaporanUmmi = async () => {
@@ -1004,8 +1107,15 @@ const generateWordRapor = async (nis) => {
   // 1. Data Kelas, Semester, dan Target
   const kelasAktif = siswa.riwayatKelas?.[0];
   const namaKelas = kelasAktif?.nama_kelas || "-";
-  const namaTahun = kelasAktif?.tahun_akademik?.nama_tahun || "2026/2027 GENAP";
-  const semesterTahunAjaran = `SEMESTER ${namaTahun.toUpperCase().includes("GANJIL") ? "GANJIL" : "GENAP"} TAHUN AJARAN ${namaTahun.replace(/ganjil|genap/gi, "").trim()}`;
+  // Jangan hardcode tahun default — jika relasi tidak ada, biarkan "-"
+  const namaTahun = kelasAktif?.tahun_akademik?.nama_tahun || "";
+  const semesterLabel = namaTahun.toUpperCase().includes("GANJIL")
+    ? "GANJIL"
+    : namaTahun.toUpperCase().includes("GENAP")
+      ? "GENAP"
+      : "";
+  const tahunLabel = namaTahun.replace(/ganjil|genap/gi, "").trim() || "-";
+  const semesterTahunAjaran = `${semesterLabel ? `SEMESTER ${semesterLabel} ` : ""}TAHUN AJARAN ${tahunLabel}`;
 
   const { targetTahsin, targetTahfidz } = getTargetQuran(namaKelas, namaTahun);
 
@@ -1013,75 +1123,26 @@ const generateWordRapor = async (nis) => {
   const pengajarTahsin = siswa.halaqoh_tahsin?.user?.nama || "-";
   const pengajarTahfidz = siswa.halaqoh_tahfidz?.user?.nama || "-";
 
-  // 3. Awal Semester vs Capaian Akhir (Tahsin)
-  const tahsinList = filterSetoranByAcademicYear(siswa, siswa.setoranTahsin || []);
-  let awalJilidTahsin = "-";
-  let awalHalTahsin = "-";
-  let capaianJilidTahsin = "-";
-  let capaianHalTahsin = "-";
-  let nilaiTahsin = "-";
-  let deskripsiTahsin = "-";
+  // 3. Capaian dihitung dengan fungsi yang SAMA dengan rapor Excel
+  //    (computeCapaianSiswa: gradeMap A+→98, filter semester, fallback jujur)
+  //    sehingga nilai di rapor Word === rapor Excel untuk siswa yang sama.
+  //    Sebelumnya rumus duplikat di sini memakai parseFloat mentah sehingga
+  //    predikat huruf jatuh ke fallback "A"/"90" yang menyesatkan.
+  const c = computeCapaianSiswa(siswa, "semester");
 
-  if (tahsinList.length > 0) {
-    const firstT = tahsinList[0];
-    const lastT = tahsinList[tahsinList.length - 1];
-    awalJilidTahsin = formatTahapan(firstT.tahapan || siswa.tahapan_tahsin || "-");
-    awalHalTahsin =
-      firstT.halaman || firstT.bab
-        ? `Hal ${firstT.halaman || firstT.bab}`
-        : "-";
-    capaianJilidTahsin = formatTahapan(siswa.tahapan_tahsin || lastT.tahapan || "-");
-    capaianHalTahsin =
-      (lastT.tahapan === (siswa.tahapan_tahsin || lastT.tahapan) && (lastT.halaman || lastT.bab))
-        ? `Hal ${lastT.halaman || lastT.bab}`
-        : "-";
+  const deskripsiTahsin =
+    c.jumlahSetoranTahsin > 0
+      ? `Alhamdulillah ananda ${siswa.nama} telah mencapai ${c.capaianJilidTahsin} (${c.capaianHalTahsin}) dengan nilai rata-rata ${c.nilaiTahsin}. Pertahankan semangat tilawah dan tahsin.`
+      : `Belum ada catatan setoran tahsin pada semester ini.`;
 
-    const validNilai = tahsinList
-      .map((t) => parseFloat(t.nilai))
-      .filter((n) => !isNaN(n));
-    if (validNilai.length > 0) {
-      const avg = validNilai.reduce((a, b) => a + b, 0) / validNilai.length;
-      nilaiTahsin = Math.round(avg).toString();
-    } else {
-      nilaiTahsin = lastT.nilai || "A";
-    }
+  const deskripsiTahfidz =
+    c.jumlahSetoranTahfidz > 0
+      ? `Alhamdulillah capaian hafalan ananda ${siswa.nama} mencapai Surah ${c.capaianSurahTahfidz} (${c.capaianAyatTahfidz}) dengan nilai akumulasi ${c.nilaiTahfidz}. Semangat murojaah di rumah.`
+      : `Belum ada catatan setoran hafalan pada semester ini.`;
 
-    deskripsiTahsin = `Alhamdulillah ananda ${siswa.nama} telah mencapai ${capaianJilidTahsin} (${capaianHalTahsin}) dengan nilai rata-rata ${nilaiTahsin}. Pertahankan semangat tilawah dan tahsin.`;
-  } else {
-    deskripsiTahsin = `Belum ada catatan setoran tahsin pada semester ini.`;
-  }
-
-  // 4. Awal Semester vs Capaian Akhir (Tahfizh)
-  const tahfidzList = filterSetoranByAcademicYear(siswa, siswa.setoranHafalan || []);
-  let awalSurahTahfidz = "-";
-  let awalAyatTahfidz = "-";
-  let capaianSurahTahfidz = "-";
-  let capaianAyatTahfidz = "-";
-  let nilaiTahfidz = "-";
-  let deskripsiTahfidz = "-";
-
-  if (tahfidzList.length > 0) {
-    const firstH = tahfidzList[0];
-    const lastH = tahfidzList[tahfidzList.length - 1];
-    awalSurahTahfidz = firstH.surah?.nama_surah || "-";
-    awalAyatTahfidz = firstH.ayat_awal ? `Ayat ${firstH.ayat_awal}` : "-";
-    capaianSurahTahfidz = lastH.surah?.nama_surah || "-";
-    capaianAyatTahfidz = lastH.ayat_akhir ? `Ayat ${lastH.ayat_akhir}` : "-";
-
-    const validNilai = tahfidzList
-      .map((h) => h.rata_rata || h.nilai_hafalan)
-      .filter((n) => typeof n === "number" && !isNaN(n));
-    if (validNilai.length > 0) {
-      const avg = validNilai.reduce((a, b) => a + b, 0) / validNilai.length;
-      nilaiTahfidz = Math.round(avg).toString();
-    } else {
-      nilaiTahfidz = "90";
-    }
-
-    deskripsiTahfidz = `Alhamdulillah capaian hafalan ananda ${siswa.nama} mencapai Surah ${capaianSurahTahfidz} (${capaianAyatTahfidz}) dengan nilai akumulasi ${nilaiTahfidz}. Semangat murojaah di rumah.`;
-  } else {
-    deskripsiTahfidz = `Belum ada catatan setoran hafalan pada semester ini.`;
-  }
+  // Catatan perkembangan = rangkuman kedua bidang (bukan salinan deskripsi
+  // tahsin semata seperti sebelumnya).
+  const catatanPerkembangan = `${deskripsiTahsin} ${deskripsiTahfidz}`;
 
   const content = fs.readFileSync(
     path.resolve("templates/rapor_template.docx"),
@@ -1097,21 +1158,21 @@ const generateWordRapor = async (nis) => {
     semester_tahun_ajaran: semesterTahunAjaran,
     pengajar_tahsin: pengajarTahsin,
     target_tahsin: targetTahsin,
-    awal_jilid_tahsin: awalJilidTahsin,
-    awal_hal_tahsin: awalHalTahsin,
-    jilid_tahsin: capaianJilidTahsin,
-    hal_tahsin: capaianHalTahsin,
-    nilai_tahsin: nilaiTahsin,
+    awal_jilid_tahsin: c.awalJilidTahsin,
+    awal_hal_tahsin: c.awalHalTahsin,
+    jilid_tahsin: c.capaianJilidTahsin,
+    hal_tahsin: c.capaianHalTahsin,
+    nilai_tahsin: c.nilaiTahsin,
     deskripsi_tahsin: deskripsiTahsin,
     pengajar_tahfidz: pengajarTahfidz,
     target_tahfidz: targetTahfidz,
-    awal_surah_tahfidz: awalSurahTahfidz,
-    awal_ayat_tahfidz: awalAyatTahfidz,
-    surah_tahfidz: capaianSurahTahfidz,
-    ayat_tahfidz: capaianAyatTahfidz,
-    nilai_tahfidz: nilaiTahfidz,
+    awal_surah_tahfidz: c.awalSurahTahfidz,
+    awal_ayat_tahfidz: c.awalAyatTahfidz,
+    surah_tahfidz: c.capaianSurahTahfidz,
+    ayat_tahfidz: c.capaianAyatTahfidz,
+    nilai_tahfidz: c.nilaiTahfidz,
     deskripsi_tahfidz: deskripsiTahfidz,
-    catatan_perkembangan: deskripsiTahsin,
+    catatan_perkembangan: catatanPerkembangan,
   });
 
   return doc.getZip().generate({ type: "nodebuffer" });

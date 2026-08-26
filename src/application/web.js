@@ -54,6 +54,9 @@ web.use(
       callback(null, isOriginAllowed(origin));
     },
     credentials: true,
+    // Expose Content-Disposition agar frontend bisa membaca nama file resmi
+    // yang ditetapkan server saat mengunduh laporan (fetch + blob download).
+    exposedHeaders: ["Content-Disposition"],
   }),
 );
 web.use(express.json());

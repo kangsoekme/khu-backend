@@ -32,7 +32,9 @@ const getLaporanTahfidz = async () => {
         "Predikat Terakhir": setoranTerakhir?.predikat || "Belum Ada",
         "Rata-rata Terakhir": setoranTerakhir?.rata_rata || "-",
         "Tanggal Setoran": setoranTerakhir?.timestamp
-          ? new Date(setoranTerakhir.timestamp).toLocaleDateString("id-ID")
+          ? new Date(setoranTerakhir.timestamp).toLocaleDateString("id-ID", {
+              timeZone: "Asia/Jakarta",
+            })
           : "Belum Ada",
       });
     });
@@ -77,7 +79,9 @@ const getLaporanTahsin = async () => {
         "Nilai Terakhir": setoranTerakhir?.nilai || "Belum Ada",
         Keterangan: setoranTerakhir?.keterangan || "-",
         "Tanggal Setoran": setoranTerakhir?.timestamp
-          ? new Date(setoranTerakhir.timestamp).toLocaleDateString("id-ID")
+          ? new Date(setoranTerakhir.timestamp).toLocaleDateString("id-ID", {
+              timeZone: "Asia/Jakarta",
+            })
           : "Belum Ada",
       });
     });
