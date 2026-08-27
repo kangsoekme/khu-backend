@@ -125,12 +125,23 @@ const getSemesterRange = (namaTahun = "") => {
   };
 };
 
-const filterSetoranByAcademicYear = (siswa, list = [], periode = "semester") => {
+const filterSetoranByAcademicYear = (
+  siswa,
+  list = [],
+  periode = "semester",
+  rangeOverride = null,
+) => {
   if (!list || list.length === 0) return list;
 
-  // 1. Coba ambil tahun dari nama_tahun (contoh: "2025/2026 Ganjil")
-  const namaTahun = siswa?.riwayatKelas?.[0]?.tahun_akademik?.nama_tahun || "";
-  const range = getSemesterRange(namaTahun);
+  // SATU SUMBER KEBENARAN: bila pemanggil memberikan rentang dari tahun
+  // akademik AKTIF (rangeOverride), pakai itu — konsisten dengan sheet INFO.
+  // Fallback riwayat kelas siswa hanya untuk pemanggil lama yang tidak
+  // menyediakan konteks tahun aktif.
+  const range =
+    rangeOverride ||
+    getSemesterRange(
+      siswa?.riwayatKelas?.[0]?.tahun_akademik?.nama_tahun || "",
+    );
 
   // Tidak ada relasi tahun akademik: jangan filter, tampilkan semua setoran
   if (!range) return list;
@@ -151,10 +162,10 @@ const filterSetoranByAcademicYear = (siswa, list = [], periode = "semester") => 
   });
 };
 
-const computeCapaianSiswa = (siswa, periode = "semester") => {
+const computeCapaianSiswa = (siswa, periode = "semester", rangeOverride = null) => {
   // Kecualikan setoran placement (ujian pretest) dari tampilan laporan
-  const allTahsin = (siswa.setoranTahsin || []).filter(s => !s.is_placement);
-  const tahsinList = filterSetoranByAcademicYear(siswa, allTahsin, periode);
+  const allTahsin = (siswa.setoranTahsin || []).filter((s) => !s.is_placement);
+  const tahsinList = filterSetoranByAcademicYear(siswa, allTahsin, periode, rangeOverride);
   let awalJilidTahsin = "-";
   let awalHalTahsin = "-";
   let capaianJilidTahsin = "-";
@@ -202,6 +213,7 @@ const computeCapaianSiswa = (siswa, periode = "semester") => {
     siswa,
     siswa.setoranHafalan || [],
     periode,
+    rangeOverride,
   );
   let awalSurahTahfidz = "-";
   let awalAyatTahfidz = "-";
@@ -254,7 +266,15 @@ const computeCapaianSiswa = (siswa, periode = "semester") => {
   };
 };
 
-const buildKolektifSheet = (workbook, sheetName, dataSiswa, periode = "semester", bulan = "", sheetType = "ALL") => {
+const buildKolektifSheet = (
+  workbook,
+  sheetName,
+  dataSiswa,
+  periode = "semester",
+  bulan = "",
+  sheetType = "ALL",
+  rangeAktif = null,
+) => {
   const sheet = workbook.addWorksheet(sheetName);
 
   // === BARIS 1: TOP HEADER ===
@@ -319,7 +339,7 @@ const buildKolektifSheet = (workbook, sheetName, dataSiswa, periode = "semester"
   // Data Siswa
   let currentRow = 4;
   dataSiswa.forEach((siswa) => {
-    const c = computeCapaianSiswa(siswa, periode);
+    const c = computeCapaianSiswa(siswa, periode, rangeAktif);
     sheet.getCell(`A${currentRow}`).value = siswa.nama;
 
     if (sheetType === "ALL" || sheetType === "TAHSIN") {
@@ -382,7 +402,7 @@ const buildKolektifSheet = (workbook, sheetName, dataSiswa, periode = "semester"
   }
 };
 
-const buildIndividualSheet = (workbook, dataSiswa) => {
+const buildIndividualSheet = (workbook, dataSiswa, rangeAktif = null) => {
   const sheet = workbook.addWorksheet("Laporan Individual");
   let r = 1; // Variabel penunjuk baris (row)
 
@@ -470,7 +490,7 @@ const buildIndividualSheet = (workbook, dataSiswa) => {
     sheet.getCell(`G${tahsinStart + 1}`).value = "HAL.";
 
     const tahsinDataRow = tahsinStart + 2;
-    const c = computeCapaianSiswa(siswa);
+    const c = computeCapaianSiswa(siswa, "semester", rangeAktif);
     const kls = siswa.riwayatKelas?.[0]?.nama_kelas || "-";
     const thn = siswa.riwayatKelas?.[0]?.tahun_akademik?.nama_tahun || "";
     const target = getTargetQuran(kls, thn);
@@ -649,6 +669,42 @@ const generateJamaiReport = async (kategori, periode = "semester", bulan = "", u
   const tahunAktif = await prismaClient.tahun_Akademik.findFirst({
     where: { is_active: true },
   });
+  // SATU SUMBER KEBENARAN: rentang periode dihitung SEKALI dari tahun akademik
+  // aktif — sama persis dengan yang ditampilkan di sheet INFO — lalu dipakai
+  // untuk memfilter setoran semua siswa. Tidak lagi membaca riwayat kelas
+  // per-siswa yang bisa nyangkut di tahun ajaran lama.
+  const rangeAktif = getSemesterRange(tahunAktif?.nama_tahun || "");
+  const fmtTgl = (d) =>
+    d.toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: "Asia/Jakarta",
+    });
+  const labelRentang = rangeAktif
+    ? periode === "bulanan"
+      ? `${bulan} (tahun ajaran mulai ${fmtTgl(rangeAktif.start)})`
+      : `${fmtTgl(rangeAktif.start)} – ${fmtTgl(rangeAktif.end)}`
+    : "Tanpa batas (nama tahun ajaran aktif tidak terbaca)";
+
+  // Hitung total setoran yang benar-benar masuk jendela periode (diagnostik:
+  // bila 0, laporan memang kosong dan penyebabnya terlihat dari INFO).
+  const inRange = (item) => {
+    if (!item.timestamp) return false;
+    if (!rangeAktif) return true;
+    const d = new Date(item.timestamp);
+    if (d < rangeAktif.start) return false;
+    if (periode !== "bulanan" && d > rangeAktif.end) return false;
+    return true;
+  };
+  const totalSetoranPeriode = allSiswa.reduce(
+    (acc, s) =>
+      acc +
+      (s.setoranTahsin || []).filter((x) => !x.is_placement && inRange(x)).length +
+      (s.setoranHafalan || []).filter(inRange).length,
+    0,
+  );
+
   const infoSheet = workbook.addWorksheet("INFO");
   infoSheet.mergeCells("A1:B1");
   infoSheet.getCell("A1").value = "LAPORAN JAMAI — SDI KHOIRU UMMAH SURABAYA";
@@ -663,6 +719,8 @@ const generateJamaiReport = async (kategori, periode = "semester", bulan = "", u
         ? `Bulanan (${bulan})`
         : `Semester (${tahunAktif?.nama_tahun || "-"})`,
     ],
+    ["Rentang Periode", labelRentang],
+    ["Total Setoran Masuk Periode", totalSetoranPeriode],
     ["Cakupan Data", "Seluruh setoran pada periode di atas"],
     [
       "Tanggal Cetak",
@@ -675,9 +733,18 @@ const generateJamaiReport = async (kategori, periode = "semester", bulan = "", u
     ],
     ["Dicetak Oleh", user ? `${user.nama} (${user.role})` : "-"],
   ];
+  if (totalSetoranPeriode === 0) {
+    infoRows.push([
+      "Peringatan",
+      "Tidak ada setoran pada periode ini — periksa tahun ajaran aktif dan tanggal setoran.",
+    ]);
+  }
   infoRows.forEach(([label, nilai]) => {
     const row = infoSheet.addRow([label, nilai]);
     row.getCell(1).font = { bold: true };
+    if (label === "Peringatan") {
+      row.getCell(2).font = { bold: true, color: { argb: "FFCC0000" } };
+    }
   });
   infoSheet.getColumn("A").width = 22;
   infoSheet.getColumn("B").width = 42;
@@ -694,7 +761,7 @@ const generateJamaiReport = async (kategori, periode = "semester", bulan = "", u
       const validSheetName = namaKelas
         .substring(0, 30)
         .replace(/[*?:\/\[\]]/g, "_");
-      buildKolektifSheet(workbook, `Kelas ${validSheetName}`, siswaList, periode, bulan);
+      buildKolektifSheet(workbook, `Kelas ${validSheetName}`, siswaList, periode, bulan, "ALL", rangeAktif);
     }
 
     // Sheet "Laporan Individual" untuk SEMUA siswa dihapus dari export kelas —
@@ -719,14 +786,14 @@ const generateJamaiReport = async (kategori, periode = "semester", bulan = "", u
       if (workbook.worksheets.find(s => s.name === validSheetName)) {
         validSheetName = validSheetName.substring(0, 20) + " (Tahsin)";
       }
-      buildKolektifSheet(workbook, validSheetName, list, periode, bulan, "TAHSIN");
+      buildKolektifSheet(workbook, validSheetName, list, periode, bulan, "TAHSIN", rangeAktif);
     }
     for (const [nama, list] of Object.entries(groupedByTahfidz)) {
       let validSheetName = nama.substring(0, 30).replace(/[*?:\/\[\]]/g, "_");
       if (workbook.worksheets.find(s => s.name === validSheetName)) {
         validSheetName = validSheetName.substring(0, 20) + " (Tahfidz)";
       }
-      buildKolektifSheet(workbook, validSheetName, list, periode, bulan, "TAHFIDZ");
+      buildKolektifSheet(workbook, validSheetName, list, periode, bulan, "TAHFIDZ", rangeAktif);
     }
   }
 
@@ -759,7 +826,14 @@ const generateIndividualReport = async (nis) => {
     throw new Error("Siswa tidak ditemukan!");
   }
 
-  buildIndividualSheet(workbook, [siswa]);
+  // Rentang periode dari tahun akademik AKTIF (satu sumber kebenaran,
+  // konsisten dengan laporan Jamai) — bukan dari riwayat kelas siswa.
+  const tahunAktif = await prismaClient.tahun_Akademik.findFirst({
+    where: { is_active: true },
+  });
+  const rangeAktif = getSemesterRange(tahunAktif?.nama_tahun || "");
+
+  buildIndividualSheet(workbook, [siswa], rangeAktif);
 
   return await workbook.xlsx.writeBuffer();
 };
@@ -1128,7 +1202,16 @@ const generateWordRapor = async (nis) => {
   //    sehingga nilai di rapor Word === rapor Excel untuk siswa yang sama.
   //    Sebelumnya rumus duplikat di sini memakai parseFloat mentah sehingga
   //    predikat huruf jatuh ke fallback "A"/"90" yang menyesatkan.
-  const c = computeCapaianSiswa(siswa, "semester");
+  //    Rentang periode dari tahun akademik AKTIF (konsisten dengan laporan
+  //    Jamai), bukan dari riwayat kelas siswa yang bisa nyangkut di tahun lama.
+  const tahunAktifWord = await prismaClient.tahun_Akademik.findFirst({
+    where: { is_active: true },
+  });
+  const c = computeCapaianSiswa(
+    siswa,
+    "semester",
+    getSemesterRange(tahunAktifWord?.nama_tahun || ""),
+  );
 
   const deskripsiTahsin =
     c.jumlahSetoranTahsin > 0
