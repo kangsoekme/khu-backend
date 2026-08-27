@@ -1,16 +1,15 @@
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { prismaClient } from "../application/database.js";
 import { ResponseError } from "../error/response-error.js";
 
-// Format file backup terenkripsi (V2). Backup V1 (plain JSON, tanpa password)
-// masih diterima untuk kompatibilitas, namun tidak bisa memulihkan akun user.
-const BACKUP_FORMAT = "KHU-BACKUP-V2";
+// Skema sederhana: backup = plain JSON (menyertakan hash password agar akun
+// bisa dipulihkan), restore = timpa penuh (replace) semua tabel data.
+// Peningkatan keamanan (enkripsi passphrase) ditunda untuk pengembangan lanjut.
 
-// Urutan tabel yang di-restore. Tabel "replace" dikosongkan lalu diisi ulang
-// dari file backup; tabel "merge" (data referensi statis) tidak dikosongkan
-// agar data yang lebih baru tidak hilang saat restore file lama.
+// Tabel "replace" dikosongkan lalu diisi ulang dari file backup;
+// tabel "merge" (data referensi statis) tidak dikosongkan agar data yang
+// lebih baru tidak hilang saat restore file lama.
 const REPLACE_TABLES = [
   "users",
   "siswa",
@@ -38,60 +37,6 @@ const MODEL_BY_TABLE = {
   ujian_kenaikan: "ujian_Kenaikan",
   ujian_pretest: "ujian_Pretest",
   pengajuan_ujian: "pengajuan_Ujian",
-};
-
-// ---------------------------------------------------------------------------
-// Enkripsi file backup: AES-256-GCM dengan kunci turunan scrypt(passphrase).
-// Hash password akun ikut disimpan AGAR restore bisa memulihkan login, namun
-// tidak pernah tersimpan sebagai plaintext di file backup (SEC-5 tetap terjaga:
-// file yang bocor tanpa passphrase tidak bisa dibaca).
-// ---------------------------------------------------------------------------
-
-const deriveKey = (passphrase, salt) =>
-  crypto.scryptSync(passphrase, salt, 32, { N: 16384, r: 8, p: 1 });
-
-const encryptBackup = (plainObject, passphrase) => {
-  const salt = crypto.randomBytes(16);
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv(
-    "aes-256-gcm",
-    deriveKey(passphrase, salt),
-    iv,
-  );
-  const encrypted = Buffer.concat([
-    cipher.update(JSON.stringify(plainObject), "utf8"),
-    cipher.final(),
-  ]);
-  return {
-    format: BACKUP_FORMAT,
-    note: "File backup terenkripsi AES-256-GCM. Simpan passphrase dengan aman — tanpa passphrase file ini TIDAK bisa dipulihkan.",
-    salt: salt.toString("base64"),
-    iv: iv.toString("base64"),
-    tag: cipher.getAuthTag().toString("base64"),
-    data: encrypted.toString("base64"),
-  };
-};
-
-const decryptBackup = (file, passphrase) => {
-  try {
-    const decipher = crypto.createDecipheriv(
-      "aes-256-gcm",
-      deriveKey(passphrase, Buffer.from(file.salt, "base64")),
-      Buffer.from(file.iv, "base64"),
-    );
-    decipher.setAuthTag(Buffer.from(file.tag, "base64"));
-    const decrypted = Buffer.concat([
-      decipher.update(Buffer.from(file.data, "base64")),
-      decipher.final(),
-    ]);
-    return JSON.parse(decrypted.toString("utf8"));
-  } catch {
-    // GCM auth tag gagal = passphrase salah ATAU file berubah/rusak.
-    throw new ResponseError(
-      400,
-      "Passphrase salah atau file backup rusak/tidak utuh.",
-    );
-  }
 };
 
 // ---------------------------------------------------------------------------
@@ -131,6 +76,7 @@ const collectBackupData = async () => {
 
   return {
     timestamp: new Date().toISOString(),
+    note: "Backup berisi hash password (bukan plaintext) agar akun dapat dipulihkan. Simpan file di tempat aman.",
     data: {
       users,
       siswa,
@@ -148,16 +94,10 @@ const collectBackupData = async () => {
   };
 };
 
-const getDatabaseBackup = async (passphrase) => {
-  if (!passphrase || passphrase.length < 8) {
-    throw new ResponseError(
-      400,
-      "Passphrase backup wajib minimal 8 karakter (untuk enkripsi file).",
-    );
-  }
-  const backupData = await collectBackupData();
-  // Hash password ikut di dalam file, tapi seluruh file terenkripsi AES-256-GCM.
-  return encryptBackup(backupData, passphrase);
+const getDatabaseBackup = async () => {
+  // Semua field ikut (termasuk hash password) — tanpa ini restore tidak bisa
+  // memulihkan akun login (password adalah kolom required).
+  return collectBackupData();
 };
 
 // ---------------------------------------------------------------------------
@@ -172,37 +112,20 @@ const stripLegacyToken = (rows) =>
 // Simpan snapshot kondisi database SAAT INI sebelum menimpa dengan restore —
 // jaring pengaman bila file backup ternyata salah/rusak. File disimpan di
 // folder ./backups milik server (tidak pernah dikirim ke client).
-const writeSafetySnapshot = async (passphrase) => {
+const writeSafetySnapshot = async () => {
   const snapshot = await collectBackupData();
   const backupDir = path.join(process.cwd(), "backups");
   fs.mkdirSync(backupDir, { recursive: true });
   const stamp = new Date(Date.now() + 7 * 60 * 60 * 1000)
     .toISOString()
     .replace(/[:.]/g, "-");
-  const payload = passphrase
-    ? encryptBackup(snapshot, passphrase)
-    : { format: "KHU-BACKUP-PLAIN-SAFETY", ...snapshot };
   const filePath = path.join(backupDir, `pre-restore-${stamp}.json`);
-  fs.writeFileSync(filePath, JSON.stringify(payload, null, 2));
+  fs.writeFileSync(filePath, JSON.stringify(snapshot, null, 2));
   return filePath;
 };
 
-const restoreDatabaseBackup = async (backupFile, passphrase, opts = {}) => {
-  // ---- 1. Kenali format file & dekripsi bila perlu ----
-  let backupData;
-  if (backupFile?.format === BACKUP_FORMAT) {
-    if (!passphrase) {
-      throw new ResponseError(
-        400,
-        "File backup terenkripsi — passphrase wajib diisi untuk memulihkan.",
-      );
-    }
-    backupData = decryptBackup(backupFile, passphrase);
-  } else {
-    // File lama (plain JSON tanpa enkripsi)
-    backupData = backupFile;
-  }
-
+const restoreDatabaseBackup = async (backupFile, opts = {}) => {
+  const backupData = backupFile;
   const { data } = backupData || {};
   if (!data || typeof data !== "object") {
     throw new ResponseError(
@@ -211,7 +134,7 @@ const restoreDatabaseBackup = async (backupFile, passphrase, opts = {}) => {
     );
   }
 
-  // ---- 2. Validasi struktur sebelum menyentuh database ----
+  // ---- 1. Validasi struktur sebelum menyentuh database ----
   for (const table of [...REPLACE_TABLES, ...MERGE_TABLES]) {
     if (data[table] !== undefined && !Array.isArray(data[table])) {
       throw new ResponseError(
@@ -225,12 +148,12 @@ const restoreDatabaseBackup = async (backupFile, passphrase, opts = {}) => {
   if (users?.length && users.some((u) => !u.password)) {
     throw new ResponseError(
       400,
-      "File backup lama tidak memuat password akun sehingga akun user tidak dapat dipulihkan (login akan terkunci). Buat ulang backup dengan aplikasi versi terbaru, atau hapus blok 'users' dari file untuk memulihkan data non-akun saja.",
+      "File backup tidak memuat password akun sehingga akun tidak dapat dipulihkan. Gunakan file backup yang dibuat dengan aplikasi versi terbaru.",
     );
   }
 
-  // ---- 3. Jaring pengaman: snapshot kondisi saat ini ----
-  const safetyPath = await writeSafetySnapshot(passphrase || null);
+  // ---- 2. Jaring pengaman: snapshot kondisi saat ini ----
+  const safetyPath = await writeSafetySnapshot();
 
   // Pertahankan session admin yang sedang merestore agar tidak ter-logout
   // di tengah proses (user dihapus → session ikut cascade-delete).
@@ -243,7 +166,7 @@ const restoreDatabaseBackup = async (backupFile, passphrase, opts = {}) => {
 
   const summary = {};
 
-  // ---- 4. Eksekusi dalam satu transaction (gagal 1 tabel = rollback semua) ----
+  // ---- 3. Eksekusi dalam satu transaction (gagal 1 tabel = rollback semua) ----
   await prismaClient.$transaction(async (tx) => {
     // DELETE: anak dulu → siswa → halaqoh → user (FK RESTRICT)
     await tx.pengajuan_Ujian.deleteMany();
@@ -302,7 +225,7 @@ const restoreDatabaseBackup = async (backupFile, passphrase, opts = {}) => {
     summary.halaqoh = data.halaqoh?.length || 0;
     summary.siswa = siswa?.length || 0;
 
-    // ---- 5. Verifikasi jumlah baris (deteksi restore bolong) ----
+    // ---- 4. Verifikasi jumlah baris (deteksi restore bolong) ----
     for (const table of REPLACE_TABLES) {
       const expected = summary[table] || 0;
       const actual = await tx[MODEL_BY_TABLE[table]].count();
@@ -324,8 +247,11 @@ const restoreDatabaseBackup = async (backupFile, passphrase, opts = {}) => {
       }
     }
 
-    // ---- 6. Pulihkan session admin yang sedang login ----
-    if (currentSession?.user_id && users.some((u) => u.id === currentSession.user_id)) {
+    // ---- 5. Pulihkan session admin yang sedang login ----
+    if (
+      currentSession?.user_id &&
+      users.some((u) => u.id === currentSession.user_id)
+    ) {
       await tx.session.create({
         data: {
           token: currentSession.token,

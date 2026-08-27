@@ -5,11 +5,7 @@ const jakartaToday = () =>
 
 const backupDatabase = async (req, res, next) => {
   try {
-    // Passphrase dikirim via query param (?passphrase=...) dan dipakai untuk
-    // mengenkripsi file backup (AES-256-GCM). Minimal 8 karakter, divalidasi
-    // lagi di service.
-    const passphrase = (req.query.passphrase || "").trim();
-    const backupFile = await backupService.getDatabaseBackup(passphrase);
+    const backupFile = await backupService.getDatabaseBackup();
 
     res.setHeader("Content-Type", "application/json");
     res.setHeader(
@@ -24,20 +20,13 @@ const backupDatabase = async (req, res, next) => {
 
 const restoreDatabase = async (req, res, next) => {
   try {
-    // Dua bentuk body yang didukung:
-    // 1. Baru : { passphrase: "...", backup: { format: "KHU-BACKUP-V2", ... } }
-    // 2. Lama : langsung objek backup plain JSON (frontend versi lama)
-    const body = req.body || {};
-    const isNewEnvelope = body && typeof body === "object" && "backup" in body;
-    const backupFile = isNewEnvelope ? body.backup : body;
-    const passphrase = (isNewEnvelope ? body.passphrase : req.query.passphrase) || "";
+    // Body = langsung objek file backup (plain JSON).
+    const backupFile = req.body;
 
-    const result = await backupService.restoreDatabaseBackup(
-      backupFile,
-      passphrase,
+    const result = await backupService.restoreDatabaseBackup(backupFile, {
       // Pertahankan session admin yang sedang merestore (tidak auto-logout).
-      { currentToken: req.token },
-    );
+      currentToken: req.token,
+    });
 
     res.status(200).json({
       status: "success",
