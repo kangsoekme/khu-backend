@@ -59,7 +59,9 @@ web.use(
     exposedHeaders: ["Content-Disposition"],
   }),
 );
-web.use(express.json());
+// Limit 20mb: file backup JSON hasil /api/backup mudah melebihi default
+// Express (100kb) — tanpa ini POST /api/restore ditolak 413 sebelum ke controller.
+web.use(express.json({ limit: "20mb" }));
 web.use(publicRouter);
 web.use(userRouter);
 web.use(errorMiddleware);

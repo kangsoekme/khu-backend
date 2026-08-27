@@ -7,3 +7,6 @@ prisma/seed.js
 # File lokal (testing/dev) - JANGAN di-push
 docker-compose.local.yaml
 drop_reset_db.mjs
+
+# Snapshot safety sebelum restore (berisi data + hash password terenkripsi) - JANGAN di-push
+backups
